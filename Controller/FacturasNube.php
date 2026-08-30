@@ -7,6 +7,7 @@
 namespace FacturaScripts\Plugins\FacturasNube\Controller;
 
 use FacturaScripts\Core\Lib\ExtendedController\PanelController;
+use FacturaScripts\Dinamic\Lib\AssetManager;
 use FacturaScripts\Core\Tools;
 use FacturaScripts\Core\Where;
 use FacturaScripts\Dinamic\Model\FacturaCliente;
@@ -117,9 +118,11 @@ class FacturasNube extends PanelController
 
     protected function createViewsConfig(string $viewName = 'FacturasNubeConfig'): void
     {
-        // Assets/JS/FacturasNube.js lo carga solo el core, porque su nombre coincide
-        // con el del controlador. Registrarlo aquí además lo duplicaría, y con él
-        // el manejador del formulario de sincronización.
+        // El archivo NO puede llamarse igual que el controlador: el core cargaría
+        // por convención una segunda copia, sin versión en la url, y el navegador
+        // se quedaría con la antigua en caché.
+        AssetManager::addJs(Tools::config('route') . '/Dinamic/Assets/JS/FacturasNubeSync.js?v=' . Tools::date());
+
         $this->addHtmlView($viewName, 'Tab/FacturasNubeConfig', 'ArchivoNube', 'configuration', 'fa-solid fa-gears');
     }
 

@@ -10,6 +10,19 @@
 (function () {
     'use strict';
 
+    /**
+     * Vuelve a cargar la pantalla con un GET.
+     *
+     * No sirve el recargado normal del navegador: repite el método de la petición
+     * original, y esta pantalla se carga con POST cada vez que se pulsa uno de sus
+     * botones. Recargar así reenviaba aquel formulario con su token ya gastado, y
+     * el usuario veía un "petición duplicada" que no tenía nada que ver con lo que
+     * acababa de hacer.
+     */
+    function reloadAsGet() {
+        window.location.assign(window.location.pathname + window.location.search);
+    }
+
     function replaceSpinner(message, title) {
         document.querySelectorAll('#messages-toasts .toast-spinner').forEach(function (el) {
             el.remove();
@@ -82,7 +95,7 @@
                 animateSpinner('remove');
                 setToast(format(progressText, done, failed, payload.remaining), 'danger', '', 0);
                 window.setTimeout(function () {
-                    window.location.reload();
+                    reloadAsGet();
                 }, 4000);
                 return;
             }
@@ -91,7 +104,7 @@
         }
 
         animateSpinner('remove');
-        window.location.reload();
+        reloadAsGet();
     }
 
     document.addEventListener('DOMContentLoaded', function () {
