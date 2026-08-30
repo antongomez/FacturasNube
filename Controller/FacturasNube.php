@@ -45,6 +45,7 @@ class FacturasNube extends PanelController
             'pending' => ArchivoNube::count([Where::eq('estado', ArchivoNube::ESTADO_PENDING)]),
             'synced' => ArchivoNube::count([Where::eq('estado', ArchivoNube::ESTADO_SYNCED)]),
             'error' => ArchivoNube::count([Where::eq('estado', ArchivoNube::ESTADO_ERROR)]),
+            'sweep' => Sincronizador::pendingSweepCount(),
         ];
     }
 
@@ -227,6 +228,11 @@ class FacturasNube extends PanelController
             }
         }
 
+        // si se han pedido todas, el repaso del histórico ya no tiene nada que mirar
+        if (empty($desde)) {
+            Config::setSweepCursor((int)FacturaCliente::table()->max('idfactura'));
+        }
+
         Tools::log()->notice('facturasnube-enqueued', ['%count%' => $count]);
         return true;
     }
@@ -270,6 +276,11 @@ class FacturasNube extends PanelController
         Config::set('plantilla_nombre', trim((string)$this->request->input('plantilla_nombre', '')));
         Config::set('al_borrar', (string)$this->request->input('al_borrar', Config::ON_DELETE_TRASH));
         Config::set('scope', (string)$this->request->input('scope', Config::SCOPE_FULL));
+
+        $historicBefore = Config::syncHistoric();
+        $startBefore = Config::startDate();
+        Config::set('historico', (bool)$this->request->input('historico', false));
+        Config::set('fecha_inicio', trim((string)$this->request->input('fecha_inicio', '')));
         Config::set('max_intentos', (int)$this->request->input('max_intentos', 5));
         Config::set('tam_lote', (int)$this->request->input('tam_lote', 25));
 
@@ -288,6 +299,11 @@ class FacturasNube extends PanelController
         // si ha cambiado la carpeta raíz, los ids cacheados ya no sirven
         if ($rootBefore !== Config::rootFolderId() . '|' . Config::rootFolderName()) {
             (new GoogleDrive())->forgetFolderCache();
+        }
+
+        // si cambia el rango del histórico, el repaso tiene que empezar de nuevo
+        if ($startBefore !== Config::startDate() || (false === $historicBefore && Config::syncHistoric())) {
+            Config::setSweepCursor(0);
         }
 
         Tools::log()->notice('record-updated-correctly');

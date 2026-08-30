@@ -18,9 +18,17 @@ final class GoogleDriveTest extends TestCase
 {
     use LogErrorsTrait;
 
+    /** @var mixed */
+    private $clientIdBackup;
+
+    protected function setUp(): void
+    {
+        $this->clientIdBackup = Tools::settings(Config::GROUP, 'client_id');
+    }
+
     protected function tearDown(): void
     {
-        Tools::settingsSet(Config::GROUP, 'client_id', null);
+        Tools::settingsSet(Config::GROUP, 'client_id', $this->clientIdBackup);
         $this->logErrors();
     }
 

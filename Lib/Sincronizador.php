@@ -45,6 +45,10 @@ class Sincronizador
             return false;
         }
 
+        if (false === self::inRange($factura)) {
+            return false;
+        }
+
         $item = ArchivoNube::forDocument($servicio, self::MODELO, $factura->idfactura);
         $item->codigo = $factura->codigo;
         $item->estado = ArchivoNube::ESTADO_PENDING;
@@ -95,6 +99,11 @@ class Sincronizador
             return $result;
         }
 
+        // antes de nada, damos de alta las facturas que aún no están en la cola.
+        // Así el histórico entra solo, sin obligar a marcarlo a mano.
+        $limit = $limit > 0 ? $limit : Config::batchSize();
+        self::sweepHistoric($limit, $servicio);
+
         $where = [
             Where::eq('servicio', $servicio),
             Where::in('estado', [
@@ -105,7 +114,6 @@ class Sincronizador
             Where::lt('intentos', Config::maxRetries()),
         ];
 
-        $limit = $limit > 0 ? $limit : Config::batchSize();
         foreach (ArchivoNube::all($where, ['id' => 'ASC'], 0, $limit) as $item) {
             $result['total']++;
             if (self::syncOne($item, $servicio)) {
@@ -116,6 +124,90 @@ class Sincronizador
         }
 
         return $result;
+    }
+
+    /**
+     * Da de alta en la cola las facturas que todavía no tienen fila, avanzando poco a
+     * poco por el histórico. Devuelve cuántas ha añadido.
+     *
+     * Recorre las facturas por idfactura ascendente desde el último punto alcanzado.
+     * Como idfactura es una secuencia, nunca aparecen facturas por debajo del cursor,
+     * de modo que el repaso termina solo y a partir de ahí no cuesta nada.
+     */
+    public static function sweepHistoric(int $limit = 0, string $servicio = GoogleDrive::SERVICE): int
+    {
+        if (false === Config::enabled() || false === Config::syncHistoric()) {
+            return 0;
+        }
+
+        $limit = $limit > 0 ? $limit : Config::batchSize();
+        $cursor = Config::sweepCursor();
+
+        $facturas = FacturaCliente::all(
+            [Where::gt('idfactura', $cursor)],
+            ['idfactura' => 'ASC'],
+            0,
+            $limit
+        );
+
+        if (empty($facturas)) {
+            return 0;
+        }
+
+        // preguntamos de una vez cuáles de este lote ya están en la cola
+        $ids = [];
+        foreach ($facturas as $factura) {
+            $ids[] = (string)$factura->idfactura;
+        }
+
+        $known = [];
+        $where = [
+            Where::eq('servicio', $servicio),
+            Where::eq('modelo', self::MODELO),
+            Where::in('idregistro', $ids),
+        ];
+        foreach (ArchivoNube::all($where, [], 0, 0) as $row) {
+            $known[(string)$row->idregistro] = true;
+        }
+
+        $added = 0;
+        $lastId = $cursor;
+        foreach ($facturas as $factura) {
+            $lastId = (int)$factura->idfactura;
+
+            if (isset($known[(string)$factura->idfactura])) {
+                continue;
+            }
+
+            if (self::enqueue($factura, $servicio)) {
+                $added++;
+            }
+        }
+
+        Config::setSweepCursor($lastId);
+
+        return $added;
+    }
+
+    /** Facturas que aún no ha mirado el repaso del histórico. */
+    public static function pendingSweepCount(): int
+    {
+        if (false === Config::syncHistoric()) {
+            return 0;
+        }
+
+        return FacturaCliente::count([Where::gt('idfactura', Config::sweepCursor())]);
+    }
+
+    /** True si la factura entra dentro del rango de fechas configurado. */
+    public static function inRange(FacturaCliente $factura): bool
+    {
+        $start = Config::startDate();
+        if ($start === '') {
+            return true;
+        }
+
+        return strtotime($factura->fecha) >= strtotime($start);
     }
 
     /** Procesa una única fila: subida, actualización o borrado. */

@@ -15,20 +15,37 @@ final class ConfigTest extends TestCase
 {
     use LogErrorsTrait;
 
+    /**
+     * Opciones que toca este test. Se restauran una a una en lugar de vaciarlas:
+     * otro test de la suite puede guardar la configuración, y entonces lo que
+     * quedase en memoria acabaría escrito en la instalación donde se ejecuta.
+     *
+     * @var string[]
+     */
+    const TOUCHED_SETTINGS = [
+        'al_borrar', 'carpeta_nombre', 'carpeta_raiz', 'max_intentos',
+        'plantilla_nombre', 'scope', 'tam_lote',
+    ];
+
+    /** @var array */
+    private $backup = [];
+
     /** @var string|null */
     private $siteUrlBackup;
 
     protected function setUp(): void
     {
         $this->siteUrlBackup = Tools::settings('default', 'site_url');
+        foreach (self::TOUCHED_SETTINGS as $key) {
+            $this->backup[$key] = Tools::settings(Config::GROUP, $key);
+        }
     }
 
     protected function tearDown(): void
     {
         Tools::settingsSet('default', 'site_url', $this->siteUrlBackup);
-
-        foreach (['carpeta_nombre', 'al_borrar', 'max_intentos', 'tam_lote', 'plantilla_nombre', 'scope', 'carpeta_raiz'] as $key) {
-            Tools::settingsSet(Config::GROUP, $key, null);
+        foreach ($this->backup as $key => $value) {
+            Tools::settingsSet(Config::GROUP, $key, $value);
         }
 
         $this->logErrors();

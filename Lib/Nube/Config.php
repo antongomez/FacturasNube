@@ -81,6 +81,39 @@ class Config
         return in_array($value, $valid, true) ? $value : self::ON_DELETE_TRASH;
     }
 
+    /**
+     * True si hay que subir también las facturas que ya existían antes de instalar
+     * el plugin. El worker solo se entera de las que se guardan a partir de ahora,
+     * así que sin esto el histórico se quedaría fuera para siempre.
+     */
+    public static function syncHistoric(): bool
+    {
+        return (bool)Tools::settings(self::GROUP, 'historico', true);
+    }
+
+    /** Solo se sincronizan las facturas desde esta fecha. Vacío significa todas. */
+    public static function startDate(): string
+    {
+        return trim((string)Tools::settings(self::GROUP, 'fecha_inicio', ''));
+    }
+
+    /**
+     * Hasta qué idfactura ha llegado el repaso del histórico. Como idfactura es una
+     * secuencia, nunca aparecen facturas por debajo de este número: cuando el cursor
+     * alcanza la última factura, el repaso ha terminado y las nuevas ya las trae el worker.
+     */
+    public static function sweepCursor(): int
+    {
+        return (int)Tools::settings(self::GROUP, 'cursor_historico', 0);
+    }
+
+    public static function setSweepCursor(int $value): void
+    {
+        Tools::settingsSet(self::GROUP, 'cursor_historico', $value);
+        Tools::settingsSave();
+        Tools::settingsClear();
+    }
+
     /** Número máximo de intentos fallidos antes de dejar de reintentar una factura. */
     public static function maxRetries(): int
     {

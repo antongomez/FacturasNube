@@ -57,7 +57,7 @@
     </div>
 
     {# --- Contadores --- #}
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card shadow-sm text-center">
             <div class="card-body">
                 <h3 class="mb-0 text-warning">{{ stats.pending }}</h3>
@@ -65,7 +65,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card shadow-sm text-center">
             <div class="card-body">
                 <h3 class="mb-0 text-success">{{ stats.synced }}</h3>
@@ -73,11 +73,19 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card shadow-sm text-center">
             <div class="card-body">
                 <h3 class="mb-0 text-danger">{{ stats.error }}</h3>
                 <small class="text-muted">{{ trans('facturasnube-error') }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm text-center">
+            <div class="card-body">
+                <h3 class="mb-0 text-secondary">{{ stats.sweep }}</h3>
+                <small class="text-muted">{{ trans('facturasnube-sweep-pending') }}</small>
             </div>
         </div>
     </div>
@@ -172,6 +180,24 @@
                                     {{ trans('facturasnube-on-delete-keep') }}
                                 </option>
                             </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="fsnube-fecha-inicio">{{ trans('facturasnube-start-date') }}</label>
+                            <input type="date" class="form-control" id="fsnube-fecha-inicio" name="fecha_inicio"
+                                   value="{{ fsc.setting('fecha_inicio') }}"/>
+                            <small class="form-text text-muted">{{ trans('facturasnube-start-date-help') }}</small>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-md-4">
+                                <input type="checkbox" class="form-check-input" id="fsnube-historico"
+                                       name="historico" value="1"
+                                       {% if fsc.setting('historico', true) %}checked{% endif %}/>
+                                <label class="form-check-label" for="fsnube-historico">
+                                    {{ trans('facturasnube-historic') }}
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">{{ trans('facturasnube-historic-help') }}</small>
                         </div>
 
                         <div class="col-md-4">

@@ -28,6 +28,12 @@ Hay como mucho **una fila por factura**, con el id del archivo en Drive. Al modi
 una factura ya subida se reemplaza el contenido del archivo existente, no se crea un
 duplicado.
 
+**Las facturas que ya existían antes de instalar el plugin también se suben.** El worker
+solo se entera de las que se guardan a partir de ahora, así que cada pasada repasa además
+un puñado del histórico, avanzando por `idfactura` hasta terminarlo. No hay que marcar
+nada a mano, y el contador *Por revisar* de la pantalla indica cuánto queda. Se puede
+desactivar, o limitarlo con una fecha de inicio.
+
 Para no subir lo que no ha cambiado se guarda una huella del documento (cabecera,
 líneas, nombre de archivo y carpeta destino). No se puede usar el md5 del PDF porque la
 librería le añade la fecha de creación y un identificador aleatorio, así que dos PDF de
@@ -165,6 +171,8 @@ Causas habituales, por orden de frecuencia:
 | Opción | Qué hace |
 | --- | --- |
 | Sincronización activa | Interruptor general. Apagado, no se marca ni se sube nada. |
+| Subir también las facturas anteriores | Repasa el histórico poco a poco hasta subirlo entero. |
+| Sincronizar solo desde | Las facturas anteriores a esa fecha no se suben nunca, ni al modificarlas. |
 | Client ID / Client secret | Credenciales OAuth de Google Cloud Console. |
 | Permisos que se piden a Google | `drive.file` (solo lo que crea el plugin) o acceso completo. |
 | Id de la carpeta destino | Carpeta de Drive donde guardar. Vacío = el plugin crea la suya. |
@@ -179,8 +187,10 @@ Causas habituales, por orden de frecuencia:
 
 - **Sincronizar ahora**: procesa la cola en el momento, sin esperar al cron.
 - **Reintentar las fallidas**: devuelve a la cola las filas que agotaron los reintentos.
-- **Marcar facturas desde**: marca como pendientes las facturas emitidas a partir de una
-  fecha, para subir el histórico tras instalar el plugin. Deja la fecha vacía para todas.
+- **Marcar facturas desde**: fuerza un repaso de las facturas emitidas a partir de una
+  fecha. No hace falta para subir el histórico —de eso se encarga solo—, sirve para
+  volver a comprobar un tramo concreto. Deja la fecha vacía para todas. Es barato: las
+  que no han cambiado se detectan por su huella y se saltan sin generar el PDF.
 
 ## Estados
 

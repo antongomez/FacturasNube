@@ -22,9 +22,31 @@ final class SincronizadorTest extends TestCase
     use LogErrorsTrait;
     use RandomDataTrait;
 
+    /**
+     * Opciones que tocan estos tests. Config::setSweepCursor() guarda la configuración
+     * en la base de datos, y Tools::settingsSave() vuelca de paso todo lo que haya en
+     * memoria, así que sin copia de seguridad los tests dejarían el plugin activado
+     * y el cursor movido en la instalación donde se ejecutan.
+     *
+     * @var string[]
+     */
+    const TOUCHED_SETTINGS = [
+        'activo', 'al_borrar', 'cursor_historico', 'fecha_inicio',
+        'historico', 'plantilla_nombre', 'subcarpetas', 'tam_lote',
+    ];
+
+    /** @var array */
+    private $settingsBackup = [];
+
     protected function setUp(): void
     {
+        foreach (self::TOUCHED_SETTINGS as $key) {
+            $this->settingsBackup[$key] = Tools::settings(Config::GROUP, $key);
+        }
+
         Tools::settingsSet(Config::GROUP, 'activo', true);
+        Tools::settingsSet(Config::GROUP, 'historico', true);
+        Tools::settingsSet(Config::GROUP, 'fecha_inicio', '');
         Tools::settingsSet(Config::GROUP, 'subcarpetas', true);
         Tools::settingsSet(Config::GROUP, 'plantilla_nombre', '{codigo}');
         Tools::settingsSet(Config::GROUP, 'al_borrar', Config::ON_DELETE_TRASH);
@@ -32,7 +54,13 @@ final class SincronizadorTest extends TestCase
 
     protected function tearDown(): void
     {
+        foreach ($this->settingsBackup as $key => $value) {
+            Tools::settingsSet(Config::GROUP, $key, $value);
+        }
         Tools::settingsSet(Config::GROUP, 'activo', false);
+        Tools::settingsSave();
+        Tools::settingsClear();
+
         $this->logErrors();
     }
 
@@ -210,8 +238,96 @@ final class SincronizadorTest extends TestCase
         $row->estado = ArchivoNube::ESTADO_ERROR;
         $this->assertTrue($row->save());
 
-        $result = Sincronizador::syncPending();
-        $this->assertSame(0, $result['total'], 'exhausted-row-processed');
+        // el repaso del histórico traería otras facturas de la base de datos de pruebas
+        // y enturbiaría el recuento, así que aquí solo nos interesa la cola
+        Tools::settingsSet(Config::GROUP, 'historico', false);
+        Sincronizador::syncPending();
+
+        // la fila agotada tiene que seguir intacta: ni un intento más
+        $row = $this->findRow($invoice);
+        $this->assertSame(Config::maxRetries(), (int)$row->intentos, 'exhausted-row-processed');
+        $this->assertSame(ArchivoNube::ESTADO_ERROR, $row->estado, 'exhausted-row-state-changed');
+
+        $this->deleteInvoice($invoice);
+    }
+
+    public function testSweepQueuesInvoicesNobodyMarked(): void
+    {
+        $invoice = $this->getRandomCustomerInvoice();
+        $this->assertTrue($invoice->save());
+
+        // nadie la ha marcado: es exactamente el caso del histórico anterior al plugin
+        $this->assertNull($this->findRow($invoice), 'unexpected-row');
+
+        // colocamos el repaso justo antes de esta factura
+        Config::setSweepCursor((int)$invoice->idfactura - 1);
+        $this->assertSame(1, Sincronizador::sweepHistoric(1), 'sweep-queued-nothing');
+
+        $row = $this->findRow($invoice);
+        $this->assertNotNull($row, 'row-not-created-by-sweep');
+        $this->assertSame(ArchivoNube::ESTADO_PENDING, $row->estado, 'wrong-state');
+
+        // el cursor ha avanzado, así que repasar otra vez no duplica nada
+        $this->assertSame(0, Sincronizador::sweepHistoric(1), 'sweep-queued-twice');
+        $this->assertSame(1, $this->countRows($invoice), 'duplicated-row');
+
+        $this->deleteInvoice($invoice);
+    }
+
+    public function testSweepDoesNotResetAnAlreadySyncedRow(): void
+    {
+        $invoice = $this->getRandomCustomerInvoice();
+        $this->assertTrue($invoice->save());
+        $this->assertTrue(Sincronizador::enqueue($invoice));
+
+        // la damos por subida
+        $row = $this->findRow($invoice);
+        $this->assertTrue($row->success('id-de-prueba', 'https://ejemplo.test/f', 'hash-de-prueba'));
+
+        // el repaso vuelve a pasar por encima y no debe tocarla
+        Config::setSweepCursor((int)$invoice->idfactura - 1);
+        $this->assertSame(0, Sincronizador::sweepHistoric(1), 'synced-row-requeued');
+
+        $row = $this->findRow($invoice);
+        $this->assertSame(ArchivoNube::ESTADO_SYNCED, $row->estado, 'synced-state-lost');
+        $this->assertSame('id-de-prueba', $row->file_id, 'file-id-lost');
+
+        $this->deleteInvoice($invoice);
+    }
+
+    public function testStartDateExcludesOlderInvoices(): void
+    {
+        $invoice = $this->getRandomCustomerInvoice();
+        $this->assertTrue($invoice->save());
+
+        // una fecha de inicio posterior deja la factura fuera, incluso al modificarla
+        Tools::settingsSet(Config::GROUP, 'fecha_inicio', date('Y-m-d', strtotime($invoice->fecha . ' +1 day')));
+        $this->assertFalse(Sincronizador::inRange($invoice), 'invoice-should-be-out-of-range');
+        $this->assertFalse(Sincronizador::enqueue($invoice), 'out-of-range-invoice-queued');
+
+        Config::setSweepCursor((int)$invoice->idfactura - 1);
+        $this->assertSame(0, Sincronizador::sweepHistoric(1), 'out-of-range-invoice-swept');
+        $this->assertNull($this->findRow($invoice), 'row-created-out-of-range');
+
+        // con la fecha de inicio en la propia factura sí entra
+        Tools::settingsSet(Config::GROUP, 'fecha_inicio', date('Y-m-d', strtotime($invoice->fecha)));
+        $this->assertTrue(Sincronizador::inRange($invoice), 'invoice-should-be-in-range');
+        $this->assertTrue(Sincronizador::enqueue($invoice), 'in-range-invoice-not-queued');
+
+        $this->deleteInvoice($invoice);
+    }
+
+    public function testSweepCanBeTurnedOff(): void
+    {
+        $invoice = $this->getRandomCustomerInvoice();
+        $this->assertTrue($invoice->save());
+
+        Tools::settingsSet(Config::GROUP, 'historico', false);
+        Config::setSweepCursor((int)$invoice->idfactura - 1);
+
+        $this->assertSame(0, Sincronizador::sweepHistoric(1), 'swept-while-disabled');
+        $this->assertSame(0, Sincronizador::pendingSweepCount(), 'counts-while-disabled');
+        $this->assertNull($this->findRow($invoice), 'row-created-while-disabled');
 
         $this->deleteInvoice($invoice);
     }
