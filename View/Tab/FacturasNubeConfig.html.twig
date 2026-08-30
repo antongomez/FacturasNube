@@ -212,15 +212,24 @@
                 <i class="fa-solid fa-bolt fa-fw me-2"></i>{{ trans('actions') }}
             </div>
             <div class="card-body">
-                <div class="row g-3 align-items-end">
+                {#
+                   Las tres columnas comparten la misma estructura vertical (etiqueta,
+                   control, texto de ayuda) para que los controles queden alineados
+                   entre sí. Las dos primeras no necesitan etiqueta —el texto ya está
+                   en el botón—, así que llevan una vacía que solo ocupa el hueco y
+                   que se oculta cuando las columnas se apilan en pantallas estrechas.
+                #}
+                <div class="row g-3">
                     <div class="col-md-4">
                         <form method="post" onsubmit="animateSpinner('add')">
                             {{ formToken() }}
                             <input type="hidden" name="action" value="sync-now"/>
                             <input type="hidden" name="activetab" value="{{ fsc.getCurrentView().getViewName() }}"/>
+                            <span class="form-label d-none d-md-block" aria-hidden="true">&nbsp;</span>
                             <button type="submit" class="btn btn-outline-primary w-100 btn-spin-action">
                                 <i class="fa-solid fa-cloud-arrow-up fa-fw"></i> {{ trans('facturasnube-sync-now') }}
                             </button>
+                            <small class="form-text text-muted">{{ trans('facturasnube-sync-now-help') }}</small>
                         </form>
                     </div>
                     <div class="col-md-4">
@@ -228,9 +237,11 @@
                             {{ formToken() }}
                             <input type="hidden" name="action" value="retry-errors"/>
                             <input type="hidden" name="activetab" value="{{ fsc.getCurrentView().getViewName() }}"/>
+                            <span class="form-label d-none d-md-block" aria-hidden="true">&nbsp;</span>
                             <button type="submit" class="btn btn-outline-warning w-100 btn-spin-action">
                                 <i class="fa-solid fa-rotate-right fa-fw"></i> {{ trans('facturasnube-retry-errors') }}
                             </button>
+                            <small class="form-text text-muted">{{ trans('facturasnube-retry-errors-help') }}</small>
                         </form>
                     </div>
                     <div class="col-md-4">
