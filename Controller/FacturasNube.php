@@ -107,15 +107,24 @@ class FacturasNube extends PanelController
         }
 
         $value = (string)$this->request->query('fsnube_sync', '');
-        if (false === (bool)preg_match('/^(\d+)-(\d+)$/', $value, $matches)) {
+        if (false === (bool)preg_match('/^(\d+)-(\d+)(?:-(\d+))?$/', $value, $matches)) {
             return;
         }
 
         $ok = (int)$matches[1];
         $error = (int)$matches[2];
 
+        // el tercer número solo viaja cuando la subida empezó marcando facturas
+        $marked = isset($matches[3]) ? (int)$matches[3] : null;
+        if (null !== $marked) {
+            Tools::log()->notice('facturasnube-enqueued', ['%count%' => $marked]);
+        }
+
         if ($ok === 0 && $error === 0) {
-            Tools::log()->notice('facturasnube-nothing-to-sync');
+            // tras un marcado, el recuento de arriba ya lo explica todo
+            if (null === $marked) {
+                Tools::log()->notice('facturasnube-nothing-to-sync');
+            }
             return;
         }
 
@@ -268,12 +277,27 @@ class FacturasNube extends PanelController
      */
     protected function enqueueAllAction(): bool
     {
+        // el javascript de la pantalla lo llama por fetch para encadenar la subida justo
+        // después del marcado; en ese caso responde en json en lugar de repintar la página
+        $json = (bool)$this->request->input('json', false);
+        if ($json) {
+            $this->setTemplate(false);
+        }
+
         if (false === $this->permissions->allowUpdate || false === $this->validateFormToken()) {
+            if ($json) {
+                $this->response->json(['ok' => false, 'message' => Tools::trans('not-allowed-modify')]);
+                return false;
+            }
             Tools::log()->warning('not-allowed-modify');
             return true;
         }
 
         if (false === Config::enabled()) {
+            if ($json) {
+                $this->response->json(['ok' => false, 'message' => Tools::trans('facturasnube-disabled')]);
+                return false;
+            }
             Tools::log()->warning('facturasnube-disabled');
             return true;
         }
@@ -292,6 +316,11 @@ class FacturasNube extends PanelController
         // si se han pedido todas, el repaso del histórico ya no tiene nada que mirar
         if (empty($desde)) {
             Config::setSweepCursor((int)FacturaCliente::table()->max('idfactura'));
+        }
+
+        if ($json) {
+            $this->response->json(['ok' => true, 'marked' => $count]);
+            return false;
         }
 
         Tools::log()->notice('facturasnube-enqueued', ['%count%' => $count]);

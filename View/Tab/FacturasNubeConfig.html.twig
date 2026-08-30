@@ -274,7 +274,11 @@
                         </form>
                     </div>
                     <div class="col-md-4">
-                        <form method="post" onsubmit="animateSpinner('add')">
+                        <form method="post" id="fsnube-enqueue-form" onsubmit="animateSpinner('add')"
+                              data-fsnube-title="{{ trans('facturasnube-enqueue-all') }}"
+                              data-fsnube-progress="{{ trans('facturasnube-progress') }}"
+                              data-fsnube-error="{{ trans('facturasnube-batch-error') }}"
+                              data-fsnube-enqueued="{{ trans('facturasnube-enqueued') }}">
                             {{ formToken() }}
                             <input type="hidden" name="action" value="enqueue-all"/>
                             <input type="hidden" name="activetab" value="{{ fsc.getCurrentView().getViewName() }}"/>
@@ -282,7 +286,7 @@
                             <div class="input-group">
                                 <input type="date" class="form-control" id="fsnube-desde" name="desde"/>
                                 <button type="submit" class="btn btn-outline-secondary btn-spin-action">
-                                    <i class="fa-solid fa-list-check fa-fw"></i>
+                                    <i class="fa-solid fa-arrows-rotate fa-fw"></i>
                                 </button>
                             </div>
                             <div class="form-check mt-2">

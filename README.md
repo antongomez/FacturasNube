@@ -193,10 +193,11 @@ Causas habituales, por orden de frecuencia:
   agotar ahí los reintentos. Sin javascript el botón sigue funcionando, subiendo una
   tanda por pulsación.
 - **Reintentar las fallidas**: devuelve a la cola las filas que agotaron los reintentos.
-- **Marcar facturas desde**: fuerza un repaso de las facturas emitidas a partir de una
-  fecha. No hace falta para subir el histórico —de eso se encarga solo—, sirve para
-  volver a comprobar un tramo concreto. Deja la fecha vacía para todas. Es barato: las
-  que no han cambiado se detectan por su huella y se saltan sin generar el PDF.
+- **Revisar y subir desde**: marca las facturas emitidas a partir de una fecha y las
+  sube en la misma pulsación. No hace falta para subir el histórico —de eso se encarga
+  solo—, sirve para volver a comprobar un tramo concreto. Deja la fecha vacía para
+  todas. Es barato: las que no han cambiado se detectan por su huella y se saltan sin
+  generar el PDF.
 - **Volver a subirlas aunque no hayan cambiado**: casilla del punto anterior. Olvida la
   huella para que el PDF se regenere y se suba otra vez. Conserva el id del archivo, así
   que **reemplaza el que ya está en la nube y no crea copias**; el enlace sigue siendo

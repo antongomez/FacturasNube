@@ -19,7 +19,7 @@
      * el usuario veía un "petición duplicada" que no tenía nada que ver con lo que
      * acababa de hacer.
      */
-    function reloadAsGet(done, failed) {
+    function reloadAsGet(done, failed, marked) {
         const url = new URL(window.location.href);
 
         // el endpoint de tanda responde en json y no deja rastro en el registro,
@@ -27,7 +27,11 @@
         // recargarse. Sin esto, no tener nada pendiente era indistinguible de un fallo:
         // la página se recargaba en silencio y parecía que no había hecho nada.
         if (typeof done === 'number') {
-            url.searchParams.set('fsnube_sync', done + '-' + failed);
+            let value = done + '-' + failed;
+            if (typeof marked === 'number') {
+                value += '-' + marked;
+            }
+            url.searchParams.set('fsnube_sync', value);
         }
 
         window.location.assign(url.pathname + url.search);
@@ -47,7 +51,33 @@
             .replace('%remaining%', remaining);
     }
 
-    async function run(form) {
+    function postForm(url, data, errorText) {
+        return fetch(url, {
+            method: 'POST',
+            body: data,
+            credentials: 'same-origin',
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        }).then(function (response) {
+            return response.json();
+        }).then(function (payload) {
+            if (!payload.ok) {
+                animateSpinner('remove');
+                setToast(payload.message || errorText, 'danger', '', 0);
+                return null;
+            }
+            return payload;
+        }).catch(function () {
+            animateSpinner('remove');
+            setToast(errorText, 'danger', '', 0);
+            return null;
+        });
+    }
+
+    /**
+     * Encadena peticiones de tanda hasta vaciar la cola. Devuelve el recuento,
+     * o null si algo ha fallado (el aviso queda puesto y el spinner retirado).
+     */
+    async function syncLoop(form) {
         const url = form.getAttribute('action') || window.location.pathname + window.location.search;
         const tokenField = form.querySelector('input[name="multireqtoken"]');
         const title = form.dataset.fsnubeTitle || '';
@@ -58,8 +88,6 @@
         let failed = 0;
         let round = 0;
 
-        animateSpinner('add');
-
         while (true) {
             round++;
 
@@ -69,27 +97,10 @@
             // el core admite variar su parte aleatoria desde javascript
             data.append('multireqtoken', tokenField.value + round);
 
-            let payload;
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    body: data,
-                    credentials: 'same-origin',
-                    headers: {'X-Requested-With': 'XMLHttpRequest'}
-                });
-                payload = await response.json();
-            } catch (error) {
-                animateSpinner('remove');
-                setToast(errorText, 'danger', '', 0);
-                return;
+            const payload = await postForm(url, data, errorText);
+            if (payload === null) {
+                return null;
             }
-
-            if (!payload.ok) {
-                animateSpinner('remove');
-                setToast(payload.message || errorText, 'danger', '', 0);
-                return;
-            }
-
 
             done += payload.uploaded;
             failed += payload.failed;
@@ -103,16 +114,59 @@
             // la cuenta se desconectó—: paramos en lugar de agotar aquí los reintentos
             // de cada factura, que es trabajo que el cron puede repetir más tarde
             if (payload.uploaded === 0 && payload.failed > 0) {
-                animateSpinner('remove');
-                reloadAsGet(done, failed);
-                return;
+                break;
             }
 
             replaceSpinner(format(progressText, done, failed, payload.remaining), title);
         }
 
+        return {done: done, failed: failed};
+    }
+
+    async function runSync(form) {
+        animateSpinner('add');
+
+        const result = await syncLoop(form);
+        if (result === null) {
+            return;
+        }
+
         animateSpinner('remove');
-        reloadAsGet(done, failed);
+        reloadAsGet(result.done, result.failed);
+    }
+
+    /**
+     * Marca las facturas del formulario (fecha y casilla de forzar) y encadena la
+     * subida en la misma pulsación. Antes marcar y subir eran dos botones distintos,
+     * y era muy fácil marcar la casilla y pulsar el botón que no la leía.
+     */
+    async function runEnqueue(form) {
+        const url = form.getAttribute('action') || window.location.pathname + window.location.search;
+        const tokenField = form.querySelector('input[name="multireqtoken"]');
+        const title = form.dataset.fsnubeTitle || '';
+        const errorText = form.dataset.fsnubeError || '';
+        const enqueuedText = form.dataset.fsnubeEnqueued || '';
+
+        animateSpinner('add');
+
+        const data = new FormData(form);
+        data.set('multireqtoken', tokenField.value + 'm');
+        data.append('json', '1');
+
+        const payload = await postForm(url, data, errorText);
+        if (payload === null) {
+            return;
+        }
+
+        replaceSpinner(enqueuedText.replace('%count%', payload.marked), title);
+
+        const result = await syncLoop(form);
+        if (result === null) {
+            return;
+        }
+
+        animateSpinner('remove');
+        reloadAsGet(result.done, result.failed, payload.marked);
     }
 
     /**
@@ -140,16 +194,22 @@
     document.addEventListener('DOMContentLoaded', function () {
         cleanUrl();
 
-        const form = document.getElementById('fsnube-sync-form');
-        if (!form) {
-            return;
+        // sin javascript los formularios siguen enviándose de la forma habitual:
+        // el de sincronizar sube una tanda por pulsación, y el de marcar solo marca
+        const syncForm = document.getElementById('fsnube-sync-form');
+        if (syncForm) {
+            syncForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+                runSync(syncForm);
+            });
         }
 
-        // sin javascript el formulario sigue enviándose de la forma habitual,
-        // solo que subiendo una tanda por pulsación
-        form.addEventListener('submit', function (event) {
-            event.preventDefault();
-            run(form);
-        });
+        const enqueueForm = document.getElementById('fsnube-enqueue-form');
+        if (enqueueForm) {
+            enqueueForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+                runEnqueue(enqueueForm);
+            });
+        }
     });
 })();
