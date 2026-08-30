@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Document   : facturas_nube_cuentas.xml
+    Description:
+        Cuenta conectada de cada servicio en la nube (tokens OAuth).
+-->
+<table>
+    <column>
+        <name>access_token</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>email</name>
+        <type>character varying(100)</type>
+    </column>
+    <column>
+        <name>expires</name>
+        <type>timestamp</type>
+    </column>
+    <column>
+        <name>fecha</name>
+        <type>timestamp</type>
+    </column>
+    <column>
+        <name>id</name>
+        <type>serial</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>refresh_token</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>scope</name>
+        <type>character varying(500)</type>
+    </column>
+    <column>
+        <name>servicio</name>
+        <type>character varying(20)</type>
+        <null>NO</null>
+    </column>
+    <constraint>
+        <name>facturas_nube_cuentas_pkey</name>
+        <type>PRIMARY KEY (id)</type>
+    </constraint>
+    <constraint>
+        <name>facturas_nube_cuentas_servicio</name>
+        <type>UNIQUE (servicio)</type>
+    </constraint>
+</table>

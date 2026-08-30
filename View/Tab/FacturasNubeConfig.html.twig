@@ -1,0 +1,255 @@
+{#
+   This file is part of FacturasNube plugin for FacturaScripts
+   Copyright (C) 2026 Anton Gomez
+#}
+{% set drive = fsc.googleDrive() %}
+{% set stats = fsc.stats() %}
+{% set connected = drive.isConnected() %}
+
+<div class="row g-3">
+    {# --- Estado de la conexión --- #}
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex align-items-center">
+                <i class="fa-brands fa-google-drive fa-fw me-2"></i>
+                <strong>Google Drive</strong>
+                <span class="ms-auto">
+                    {% if connected %}
+                        <span class="badge bg-success">{{ trans('facturasnube-connected') }}</span>
+                    {% else %}
+                        <span class="badge bg-secondary">{{ trans('facturasnube-not-connected') }}</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="card-body">
+                {% if connected %}
+                    <p class="mb-3">
+                        {{ trans('facturasnube-connected-as') }}
+                        <strong>{{ drive.accountEmail() ?: '-' }}</strong>
+                    </p>
+                    <form method="post" onsubmit="animateSpinner('add')">
+                        {{ formToken() }}
+                        <input type="hidden" name="action" value="disconnect-google"/>
+                        <input type="hidden" name="activetab" value="{{ fsc.getCurrentView().getViewName() }}"/>
+                        <button type="submit" class="btn btn-outline-danger btn-spin-action">
+                            <i class="fa-solid fa-link-slash fa-fw"></i> {{ trans('facturasnube-disconnect') }}
+                        </button>
+                    </form>
+                {% else %}
+                    <p class="text-muted">{{ trans('facturasnube-connect-help') }}</p>
+                    <form method="post" onsubmit="animateSpinner('add')">
+                        {{ formToken() }}
+                        <input type="hidden" name="action" value="connect-google"/>
+                        <input type="hidden" name="activetab" value="{{ fsc.getCurrentView().getViewName() }}"/>
+                        <button type="submit" class="btn btn-primary btn-spin-action">
+                            <i class="fa-brands fa-google fa-fw"></i> {{ trans('facturasnube-connect') }}
+                        </button>
+                    </form>
+                {% endif %}
+
+                <hr/>
+                <label class="form-label mb-1">{{ trans('facturasnube-redirect-uri') }}</label>
+                <input type="text" class="form-control form-control-sm" readonly
+                       value="{{ fsc.redirectUri() }}" onclick="this.select();"/>
+                <small class="form-text text-muted">{{ trans('facturasnube-redirect-uri-help') }}</small>
+            </div>
+        </div>
+    </div>
+
+    {# --- Contadores --- #}
+    <div class="col-md-4">
+        <div class="card shadow-sm text-center">
+            <div class="card-body">
+                <h3 class="mb-0 text-warning">{{ stats.pending }}</h3>
+                <small class="text-muted">{{ trans('facturasnube-pending') }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm text-center">
+            <div class="card-body">
+                <h3 class="mb-0 text-success">{{ stats.synced }}</h3>
+                <small class="text-muted">{{ trans('facturasnube-synced') }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm text-center">
+            <div class="card-body">
+                <h3 class="mb-0 text-danger">{{ stats.error }}</h3>
+                <small class="text-muted">{{ trans('facturasnube-error') }}</small>
+            </div>
+        </div>
+    </div>
+
+    {# --- Configuración --- #}
+    <div class="col-12">
+        <form method="post" onsubmit="animateSpinner('add')">
+            {{ formToken() }}
+            <input type="hidden" name="action" value="save-config"/>
+            <input type="hidden" name="activetab" value="{{ fsc.getCurrentView().getViewName() }}"/>
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <i class="fa-solid fa-gears fa-fw me-2"></i>{{ trans('configuration') }}
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input type="checkbox" class="form-check-input" id="fsnube-activo" name="activo"
+                                       value="1" {% if fsc.setting('activo') %}checked{% endif %}/>
+                                <label class="form-check-label" for="fsnube-activo">
+                                    {{ trans('facturasnube-active') }}
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">{{ trans('facturasnube-active-help') }}</small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="fsnube-client-id">Client ID</label>
+                            <input type="text" class="form-control" id="fsnube-client-id" name="client_id"
+                                   value="{{ fsc.setting('client_id') }}" autocomplete="off"/>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="fsnube-client-secret">Client secret</label>
+                            <input type="password" class="form-control" id="fsnube-client-secret" name="client_secret"
+                                   placeholder="{% if fsc.setting('client_secret') %}••••••••{% endif %}"
+                                   autocomplete="new-password"/>
+                            <small class="form-text text-muted">{{ trans('facturasnube-secret-help') }}</small>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label" for="fsnube-scope">{{ trans('facturasnube-scope') }}</label>
+                            {% set scope = fsc.scope() %}
+                            <select class="form-select" id="fsnube-scope" name="scope">
+                                <option value="https://www.googleapis.com/auth/drive.file"
+                                        {% if scope == 'https://www.googleapis.com/auth/drive.file' %}selected{% endif %}>
+                                    {{ trans('facturasnube-scope-file') }}
+                                </option>
+                                <option value="https://www.googleapis.com/auth/drive"
+                                        {% if scope == 'https://www.googleapis.com/auth/drive' %}selected{% endif %}>
+                                    {{ trans('facturasnube-scope-full') }}
+                                </option>
+                            </select>
+                            <small class="form-text text-muted">{{ trans('facturasnube-scope-help') }}</small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="fsnube-carpeta-raiz">{{ trans('facturasnube-root-folder-id') }}</label>
+                            <input type="text" class="form-control" id="fsnube-carpeta-raiz" name="carpeta_raiz"
+                                   value="{{ fsc.setting('carpeta_raiz') }}"/>
+                            <small class="form-text text-muted">{{ trans('facturasnube-root-folder-id-help') }}</small>
+                            {% if fsc.scopeConflict() %}
+                                <div class="alert alert-warning mt-2 mb-0 py-2 px-3 small">
+                                    <i class="fa-solid fa-triangle-exclamation fa-fw"></i>
+                                    {{ trans('facturasnube-scope-folder-conflict') }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="fsnube-carpeta-nombre">{{ trans('facturasnube-root-folder-name') }}</label>
+                            <input type="text" class="form-control" id="fsnube-carpeta-nombre" name="carpeta_nombre"
+                                   value="{{ fsc.setting('carpeta_nombre', 'Facturas FacturaScripts') }}"/>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="fsnube-plantilla">{{ trans('facturasnube-file-name') }}</label>
+                            <input type="text" class="form-control" id="fsnube-plantilla" name="plantilla_nombre"
+                                   value="{{ fsc.setting('plantilla_nombre', '{codigo}') }}"/>
+                            <small class="form-text text-muted">{{ trans('facturasnube-file-name-help') }}</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="fsnube-al-borrar">{{ trans('facturasnube-on-delete') }}</label>
+                            {% set alBorrar = fsc.setting('al_borrar', 'trash') %}
+                            <select class="form-select" id="fsnube-al-borrar" name="al_borrar">
+                                <option value="trash" {% if alBorrar == 'trash' %}selected{% endif %}>
+                                    {{ trans('facturasnube-on-delete-trash') }}
+                                </option>
+                                <option value="delete" {% if alBorrar == 'delete' %}selected{% endif %}>
+                                    {{ trans('facturasnube-on-delete-delete') }}
+                                </option>
+                                <option value="keep" {% if alBorrar == 'keep' %}selected{% endif %}>
+                                    {{ trans('facturasnube-on-delete-keep') }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check form-switch mt-4">
+                                <input type="checkbox" class="form-check-input" id="fsnube-subcarpetas"
+                                       name="subcarpetas" value="1"
+                                       {% if fsc.setting('subcarpetas', true) %}checked{% endif %}/>
+                                <label class="form-check-label" for="fsnube-subcarpetas">
+                                    {{ trans('facturasnube-subfolders') }}
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="fsnube-max-intentos">{{ trans('facturasnube-max-retries') }}</label>
+                            <input type="number" min="1" max="50" class="form-control" id="fsnube-max-intentos"
+                                   name="max_intentos" value="{{ fsc.setting('max_intentos', 5) }}"/>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="fsnube-tam-lote">{{ trans('facturasnube-batch-size') }}</label>
+                            <input type="number" min="1" max="500" class="form-control" id="fsnube-tam-lote"
+                                   name="tam_lote" value="{{ fsc.setting('tam_lote', 25) }}"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer text-end">
+                    <button type="submit" class="btn btn-primary btn-spin-action">
+                        <i class="fa-solid fa-save fa-fw"></i> {{ trans('save') }}
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {# --- Acciones manuales --- #}
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <i class="fa-solid fa-bolt fa-fw me-2"></i>{{ trans('actions') }}
+            </div>
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <form method="post" onsubmit="animateSpinner('add')">
+                            {{ formToken() }}
+                            <input type="hidden" name="action" value="sync-now"/>
+                            <input type="hidden" name="activetab" value="{{ fsc.getCurrentView().getViewName() }}"/>
+                            <button type="submit" class="btn btn-outline-primary w-100 btn-spin-action">
+                                <i class="fa-solid fa-cloud-arrow-up fa-fw"></i> {{ trans('facturasnube-sync-now') }}
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <form method="post" onsubmit="animateSpinner('add')">
+                            {{ formToken() }}
+                            <input type="hidden" name="action" value="retry-errors"/>
+                            <input type="hidden" name="activetab" value="{{ fsc.getCurrentView().getViewName() }}"/>
+                            <button type="submit" class="btn btn-outline-warning w-100 btn-spin-action">
+                                <i class="fa-solid fa-rotate-right fa-fw"></i> {{ trans('facturasnube-retry-errors') }}
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <form method="post" onsubmit="animateSpinner('add')">
+                            {{ formToken() }}
+                            <input type="hidden" name="action" value="enqueue-all"/>
+                            <input type="hidden" name="activetab" value="{{ fsc.getCurrentView().getViewName() }}"/>
+                            <label class="form-label" for="fsnube-desde">{{ trans('facturasnube-enqueue-all') }}</label>
+                            <div class="input-group">
+                                <input type="date" class="form-control" id="fsnube-desde" name="desde"/>
+                                <button type="submit" class="btn btn-outline-secondary btn-spin-action">
+                                    <i class="fa-solid fa-list-check fa-fw"></i>
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">{{ trans('facturasnube-enqueue-all-help') }}</small>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

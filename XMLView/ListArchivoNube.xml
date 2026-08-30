@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<view>
+    <columns>
+        <column name="code" order="100">
+            <widget type="text" fieldname="codigo"/>
+        </column>
+        <column name="file" order="110">
+            <widget type="text" fieldname="nombre"/>
+        </column>
+        <column name="folder" order="120">
+            <widget type="text" fieldname="carpeta"/>
+        </column>
+        <column name="status" display="center" order="130">
+            <widget type="text" fieldname="estado"/>
+        </column>
+        <column name="attempts" display="center" order="140">
+            <widget type="number" fieldname="intentos" decimal="0">
+                <option color="danger">gt:0</option>
+            </widget>
+        </column>
+        <column name="message" order="150">
+            <widget type="text" fieldname="error"/>
+        </column>
+        <column name="link" display="center" order="160">
+            <widget type="link" fieldname="file_url" target="_blank"/>
+        </column>
+        <column name="date" display="right" order="170">
+            <widget type="datetime" fieldname="fecha_sync"/>
+        </column>
+    </columns>
+    <rows>
+        <row type="status">
+            <option color="success" fieldname="estado">synced</option>
+            <option color="warning" fieldname="estado">pending</option>
+            <option color="danger" fieldname="estado">error</option>
+            <option color="secondary" fieldname="estado">deleted</option>
+        </row>
+    </rows>
+</view>

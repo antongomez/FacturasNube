@@ -1,0 +1,17 @@
+# Dependencias
+/vendor/
+composer.lock
+
+# Entornos y editores
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Logs y temporales
+*.log
+*.cache
+/MyFiles/
+
+# ignore assets
+assets

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Document   : facturas_nube_archivos.xml
+    Description:
+        Estado de sincronización de cada documento con cada servicio en la nube.
+-->
+<table>
+    <column>
+        <name>carpeta</name>
+        <type>character varying(255)</type>
+    </column>
+    <column>
+        <name>codigo</name>
+        <type>character varying(30)</type>
+    </column>
+    <column>
+        <name>error</name>
+        <type>text</type>
+    </column>
+    <column>
+        <name>estado</name>
+        <type>character varying(20)</type>
+        <null>NO</null>
+        <default>'pending'</default>
+    </column>
+    <column>
+        <name>fecha</name>
+        <type>timestamp</type>
+    </column>
+    <column>
+        <name>fecha_sync</name>
+        <type>timestamp</type>
+    </column>
+    <column>
+        <name>file_id</name>
+        <type>character varying(255)</type>
+    </column>
+    <column>
+        <name>file_url</name>
+        <type>character varying(500)</type>
+    </column>
+    <column>
+        <name>hash</name>
+        <type>character varying(32)</type>
+    </column>
+    <column>
+        <name>id</name>
+        <type>serial</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>idregistro</name>
+        <type>character varying(30)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>intentos</name>
+        <type>integer</type>
+        <default>0</default>
+    </column>
+    <column>
+        <name>modelo</name>
+        <type>character varying(50)</type>
+        <null>NO</null>
+    </column>
+    <column>
+        <name>nombre</name>
+        <type>character varying(255)</type>
+    </column>
+    <column>
+        <name>servicio</name>
+        <type>character varying(20)</type>
+        <null>NO</null>
+    </column>
+    <constraint>
+        <name>facturas_nube_archivos_pkey</name>
+        <type>PRIMARY KEY (id)</type>
+    </constraint>
+    <constraint>
+        <name>facturas_nube_archivos_uniq</name>
+        <type>UNIQUE (servicio,modelo,idregistro)</type>
+    </constraint>
+    <index>
+        <name>facturas_nube_archivos_estado</name>
+        <columns>estado</columns>
+    </index>
+</table>
