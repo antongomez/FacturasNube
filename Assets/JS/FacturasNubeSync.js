@@ -115,7 +115,31 @@
         reloadAsGet(done, failed);
     }
 
+    /**
+     * Quita de la url los parámetros que solo sirven para contar el resultado de la
+     * acción anterior. Los formularios de esta pantalla se envían a la url actual,
+     * así que si se quedaran pegados, cada acción posterior repetiría un mensaje que
+     * ya no viene a cuento.
+     */
+    function cleanUrl() {
+        const url = new URL(window.location.href);
+        let changed = false;
+
+        ['fsnube_sync', 'fsnube'].forEach(function (key) {
+            if (url.searchParams.has(key)) {
+                url.searchParams.delete(key);
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        cleanUrl();
+
         const form = document.getElementById('fsnube-sync-form');
         if (!form) {
             return;

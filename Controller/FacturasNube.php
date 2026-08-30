@@ -99,6 +99,13 @@ class FacturasNube extends PanelController
      */
     protected function showSyncResult(): void
     {
+        // el resultado llega en una navegación GET. Si estamos atendiendo un envío de
+        // formulario, el parámetro es un resto de la url anterior: contarlo otra vez
+        // taparía el mensaje de la acción que el usuario acaba de pedir.
+        if (false === $this->request->isMethod('GET')) {
+            return;
+        }
+
         $value = (string)$this->request->query('fsnube_sync', '');
         if (false === (bool)preg_match('/^(\d+)-(\d+)$/', $value, $matches)) {
             return;
@@ -129,6 +136,10 @@ class FacturasNube extends PanelController
     protected function showCallbackMessage(): void
     {
         $this->showSyncResult();
+
+        if (false === $this->request->isMethod('GET')) {
+            return;
+        }
 
         switch ($this->request->query('fsnube', '')) {
             case 'auth-error':
