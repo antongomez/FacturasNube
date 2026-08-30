@@ -23,6 +23,8 @@
     "facturasnube-file-name": "Nom del fitxer",
     "facturasnube-file-name-help": "Admet {codigo}, {numero}, {fecha}, {cliente} i {nif}. L'extensió .pdf s'afegeix sola.",
     "facturasnube-folder-error": "No s'ha pogut crear ni trobar la carpeta %name% al núvol.",
+    "facturasnube-force": "Tornar-les a pujar encara que no hagin canviat",
+    "facturasnube-force-help": "Reemplaça el contingut del fitxer que ja hi ha al núvol, conservant-ne l'enllaç. No crea còpies.",
     "facturasnube-google-callback": "Retorn de Google Drive",
     "facturasnube-historic": "Pujar també les factures anteriors",
     "facturasnube-historic-help": "Les factures que ja existien abans d'instal·lar el plugin es revisen de mica en mica a cada passada, sense haver de marcar-les a mà.",

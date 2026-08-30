@@ -285,7 +285,13 @@
                                     <i class="fa-solid fa-list-check fa-fw"></i>
                                 </button>
                             </div>
-                            <small class="form-text text-muted">{{ trans('facturasnube-enqueue-all-help') }}</small>
+                            <div class="form-check mt-2">
+                                <input type="checkbox" class="form-check-input" id="fsnube-forzar" name="forzar" value="1"/>
+                                <label class="form-check-label small" for="fsnube-forzar">
+                                    {{ trans('facturasnube-force') }}
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">{{ trans('facturasnube-force-help') }}</small>
                         </form>
                     </div>
                 </div>

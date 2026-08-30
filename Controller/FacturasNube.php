@@ -233,10 +233,11 @@ class FacturasNube extends PanelController
 
         $desde = $this->request->input('desde', '');
         $where = empty($desde) ? [] : [Where::gte('fecha', $desde)];
+        $force = (bool)$this->request->input('forzar', false);
 
         $count = 0;
         foreach (FacturaCliente::all($where, ['idfactura' => 'ASC'], 0, 0) as $factura) {
-            if (Sincronizador::enqueue($factura)) {
+            if (Sincronizador::enqueue($factura, GoogleDrive::SERVICE, $force)) {
                 $count++;
             }
         }

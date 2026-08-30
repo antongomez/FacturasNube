@@ -362,6 +362,32 @@ final class SincronizadorTest extends TestCase
         $this->deleteInvoice($invoice);
     }
 
+    public function testForceClearsTheHashSoTheFileIsUploadedAgain(): void
+    {
+        $invoice = $this->getRandomCustomerInvoice();
+        $this->assertTrue($invoice->save());
+        $this->assertTrue(Sincronizador::enqueue($invoice));
+
+        // la damos por subida, con su huella y su id de archivo
+        $row = $this->findRow($invoice);
+        $this->assertTrue($row->success('id-de-prueba', 'https://ejemplo.test/f', 'huella-de-prueba'));
+
+        // encolar sin forzar conserva la huella, así que la subida se saltaría
+        $this->assertTrue(Sincronizador::enqueue($invoice));
+        $row = $this->findRow($invoice);
+        $this->assertSame('huella-de-prueba', $row->hash, 'hash-cleared-without-force');
+
+        // forzando se olvida la huella, pero se conserva el id: se reemplaza el
+        // archivo que ya está en la nube en lugar de crear un duplicado
+        $this->assertTrue(Sincronizador::enqueue($invoice, GoogleDrive::SERVICE, true));
+        $row = $this->findRow($invoice);
+        $this->assertNull($row->hash, 'hash-not-cleared-with-force');
+        $this->assertSame('id-de-prueba', $row->file_id, 'file-id-lost-on-force');
+        $this->assertSame(ArchivoNube::ESTADO_PENDING, $row->estado, 'wrong-state-after-force');
+
+        $this->deleteInvoice($invoice);
+    }
+
     public function testPdfIsGenerated(): void
     {
         $invoice = $this->getRandomCustomerInvoice();

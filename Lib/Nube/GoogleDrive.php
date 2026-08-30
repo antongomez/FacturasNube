@@ -298,6 +298,14 @@ class GoogleDrive implements CloudProvider
      */
     public function uploadFile(string $folderId, string $fileName, string $content, string $mimeType): array
     {
+        // si ya hay un archivo con ese nombre en la carpeta, lo reutilizamos. Evita
+        // duplicados cuando se ha perdido el id guardado: al reinstalar el plugin,
+        // al borrar filas del registro, o si una subida anterior se quedó a medias.
+        $existingId = $this->findInFolder($folderId, $fileName);
+        if ($existingId !== '') {
+            return $this->updateFile($existingId, $fileName, $content, $mimeType);
+        }
+
         $metadata = [
             'name' => $fileName,
             'parents' => [$folderId],
@@ -329,6 +337,62 @@ class GoogleDrive implements CloudProvider
     /**
      * @throws CloudException
      */
+    /**
+     * Id del archivo con ese nombre dentro de la carpeta, o cadena vacía si no lo hay.
+     *
+     * @throws CloudException
+     */
+    public function findInFolder(string $folderId, string $fileName): string
+    {
+        $query = "name = '" . $this->escapeQuery($fileName) . "'"
+            . " and '" . $this->escapeQuery($folderId) . "' in parents"
+            . " and trashed = false";
+
+        $data = $this->apiGet('/files', [
+            'q' => $query,
+            'fields' => 'files(id)',
+            'pageSize' => 1,
+            'spaces' => 'drive',
+            'supportsAllDrives' => 'true',
+            'includeItemsFromAllDrives' => 'true',
+        ]);
+
+        return (string)($data['files'][0]['id'] ?? '');
+    }
+
+    /**
+     * Lleva el archivo a otra carpeta conservando su id, de forma que los enlaces
+     * que ya se hubieran compartido siguen siendo válidos.
+     *
+     * @throws CloudException
+     */
+    public function moveFile(string $fileId, string $folderId): bool
+    {
+        $data = $this->apiGet('/files/' . rawurlencode($fileId), [
+            'fields' => 'parents',
+            'supportsAllDrives' => 'true',
+        ]);
+
+        $current = $data['parents'] ?? [];
+        if ($current === [$folderId]) {
+            return true;
+        }
+
+        // Drive no admite cambiar "parents" en un PATCH normal: hay que usar
+        // los parámetros addParents y removeParents
+        $query = [
+            'addParents' => $folderId,
+            'supportsAllDrives' => 'true',
+        ];
+        if (!empty($current)) {
+            $query['removeParents'] = implode(',', $current);
+        }
+
+        $this->apiPatchJson('/files/' . rawurlencode($fileId), [], $query);
+
+        return true;
+    }
+
     public function fileExists(string $fileId): bool
     {
         if (empty($fileId)) {

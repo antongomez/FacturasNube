@@ -23,6 +23,8 @@
     "facturasnube-file-name": "Nome do ficheiro",
     "facturasnube-file-name-help": "Admite {codigo}, {numero}, {fecha}, {cliente} e {nif}. A extensión .pdf engádese soa.",
     "facturasnube-folder-error": "Non se puido crear nin atopar o cartafol %name% na nube.",
+    "facturasnube-force": "Volver subilas aínda que non cambiaran",
+    "facturasnube-force-help": "Substitúe o contido do ficheiro que xa está na nube, conservando a súa ligazón. Non crea copias.",
     "facturasnube-google-callback": "Retorno de Google Drive",
     "facturasnube-historic": "Subir tamén as facturas anteriores",
     "facturasnube-historic-help": "As facturas que xa existían antes de instalar o plugin repásanse pouco a pouco en cada pasada, sen necesidade de marcalas a man.",

@@ -52,6 +52,14 @@ interface CloudProvider
     public function updateFile(string $fileId, string $fileName, string $content, string $mimeType): array;
 
     /**
+     * Lleva el archivo a otra carpeta conservando su id, para que no se rompan los
+     * enlaces ya compartidos. Necesario cuando cambia el esquema de carpetas.
+     *
+     * @throws CloudException
+     */
+    public function moveFile(string $fileId, string $folderId): bool;
+
+    /**
      * True si el archivo sigue existiendo en el servicio. Debe lanzar una excepción
      * si no se puede saber: devolver false ante un fallo de red haría que se subiera
      * un duplicado en lugar de reintentar.

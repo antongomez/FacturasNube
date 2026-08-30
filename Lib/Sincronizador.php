@@ -39,8 +39,11 @@ class Sincronizador
     /**
      * Marca una factura como pendiente de subir. No hace ninguna llamada de red.
      */
-    public static function enqueue(FacturaCliente $factura, string $servicio = GoogleDrive::SERVICE): bool
-    {
+    public static function enqueue(
+        FacturaCliente $factura,
+        string $servicio = GoogleDrive::SERVICE,
+        bool $force = false
+    ): bool {
         if (false === Config::enabled() || empty($factura->idfactura)) {
             return false;
         }
@@ -56,6 +59,13 @@ class Sincronizador
 
         // una modificación nueva merece una tanda de reintentos nueva
         $item->intentos = 0;
+
+        // olvidar la huella obliga a regenerar el PDF y volver a subirlo aunque el
+        // documento no haya cambiado. Se conserva el id del archivo, así que se
+        // reemplaza el que ya está en la nube en lugar de crear un duplicado.
+        if ($force) {
+            $item->hash = null;
+        }
 
         return $item->save();
     }
@@ -310,6 +320,13 @@ class Sincronizador
         $folderId = $provider->ensureFolder($segments);
 
         $exists = !empty($item->file_id) && $provider->fileExists($item->file_id);
+
+        // si ha cambiado el esquema de carpetas, el archivo se lleva a la nueva
+        // conservando su id, para no romper los enlaces ya compartidos
+        if ($exists && $item->carpeta !== implode('/', $segments)) {
+            $provider->moveFile($item->file_id, $folderId);
+        }
+
         $data = $exists
             ? $provider->updateFile($item->file_id, $fileName, $pdf, self::MIME_PDF)
             : $provider->uploadFile($folderId, $fileName, $pdf, self::MIME_PDF);

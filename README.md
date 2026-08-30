@@ -177,7 +177,7 @@ Causas habituales, por orden de frecuencia:
 | Permisos que se piden a Google | `drive.file` (solo lo que crea el plugin) o acceso completo. |
 | Id de la carpeta destino | Carpeta de Drive donde guardar. Vacío = el plugin crea la suya. |
 | Nombre de la carpeta a crear | Nombre que usa cuando no se indica un id. |
-| Organizar en subcarpetas año/mes | Crea `2026/2026-08/` a partir de la fecha de la factura. |
+| Organizar en subcarpetas año/mes | Crea `2026/2026-08/` a partir de la fecha de la factura. Al cambiarlo, los archivos ya subidos se mueven a la carpeta que les toque conservando su enlace. |
 | Nombre del archivo | Plantilla con `{codigo}`, `{numero}`, `{fecha}`, `{cliente}` y `{nif}`. |
 | Al eliminar una factura | Papelera, borrado definitivo, o no tocar el archivo. |
 | Reintentos máximos | Intentos fallidos seguidos antes de rendirse con una factura. |
@@ -197,6 +197,21 @@ Causas habituales, por orden de frecuencia:
   fecha. No hace falta para subir el histórico —de eso se encarga solo—, sirve para
   volver a comprobar un tramo concreto. Deja la fecha vacía para todas. Es barato: las
   que no han cambiado se detectan por su huella y se saltan sin generar el PDF.
+- **Volver a subirlas aunque no hayan cambiado**: casilla del punto anterior. Olvida la
+  huella para que el PDF se regenere y se suba otra vez. Conserva el id del archivo, así
+  que **reemplaza el que ya está en la nube y no crea copias**; el enlace sigue siendo
+  válido. Es lo que hay que usar tras cambiar la plantilla del nombre, el esquema de
+  carpetas o el formato del documento.
+
+### Sobre borrar y volver a subir
+
+No hace falta, y además tiene truco: la fila del registro es la que guarda el id del
+archivo en la nube. Si la borras, la siguiente subida no sabe qué archivo reemplazar.
+
+Aun así el plugin no duplica nada: antes de crear un archivo nuevo comprueba si ya hay
+uno con ese nombre en la carpeta de destino y lo reutiliza. Eso cubre también el caso de
+reinstalar el plugin con la tabla vacía. Para rehacer una subida, la vía limpia es la
+casilla de volver a subirlas.
 
 ## Estados
 
