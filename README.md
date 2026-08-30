@@ -39,6 +39,10 @@ la misma factura nunca coinciden byte a byte.
 - **El cron de FacturaScripts configurado en el servidor.** Sin él no se sube nada de
   forma automática; solo funcionaría el botón *Sincronizar ahora*.
 - `site_url` bien configurada en la empresa: de ahí sale el URI de redirección de OAuth.
+- Un dominio público para la conexión inicial con Google. Si tu servidor está en
+  Tailscale, en una VPN o en la red local, mira
+  [Servidor sin dominio público](#servidor-sin-dominio-público-tailscale-vpn-red-local):
+  se resuelve conectando una única vez a través de `localhost`.
 
 ## Configuración en Google Cloud Console
 
@@ -58,7 +62,9 @@ la misma factura nunca coinciden byte a byte.
    https://tu-dominio/oauth2/facturas-nube/google
    ```
 
-   Si no coincide carácter por carácter, Google rechazará la conexión.
+   Si no coincide carácter por carácter, Google rechazará la conexión. Y si ese dominio
+   no es público y verificable, Google lo rechazará de todas formas: en ese caso ve a
+   [Servidor sin dominio público](#servidor-sin-dominio-público-tailscale-vpn-red-local).
 6. Copia el **Client ID** y el **Client secret** en la configuración del plugin,
    guarda y pulsa **Conectar con Google Drive**.
 
@@ -75,6 +81,84 @@ archivos que él mismo crea) evita la verificación de Google. Se elige en el de
 escribir en carpetas que no haya creado él. La pantalla avisa si esa combinación es
 imposible, y también si cambias el permiso sin volver a conectar la cuenta (el token
 guardado conserva los permisos que se concedieron en su momento).
+
+### Servidor sin dominio público (Tailscale, VPN, red local)
+
+Si tu FacturaScripts no está en un dominio público del que puedas demostrar la
+propiedad, Google **no aceptará su URL como URI de redirección**. Pasa con nombres de
+Tailscale (`*.ts.net`), VPN, dominios internos o direcciones de red local: son de otro
+o no existen en el DNS público, así que no puedes verificarlos en Search Console.
+
+Verás uno de estos dos errores, y conviene distinguirlos porque significan cosas
+distintas:
+
+| Error | Qué significa |
+| --- | --- |
+| `Error 400: invalid_request`, «doesn't comply with Google's OAuth 2.0 policy» | Google rechaza el dominio de la URI. No es un fallo de configuración: esa URL nunca va a funcionar. |
+| `Error 400: redirect_uri_mismatch` | El dominio le vale, pero la URI que envía el plugin no coincide **carácter a carácter** con ninguna de las registradas. |
+
+La solución se apoya en un detalle importante:
+
+> **La URI de redirección solo se usa una vez.** En cuanto la cuenta queda conectada se
+> guarda el token de refresco en el servidor, y ni el cron ni las subidas vuelven a usar
+> ninguna redirección. Da igual que esa URL no sirva el resto del tiempo.
+
+Así que basta con hacer la conexión una sola vez a través de `localhost`, que Google
+exime tanto del requisito de HTTPS como del de verificar el dominio.
+
+**1. En Google Cloud Console → Clients → tu cliente:**
+
+- **Borra** la URI del dominio no público (por ejemplo la de `*.ts.net`). Mientras siga
+  registrada puede seguir bloqueando el cliente entero por incumplir la política.
+- Añade `http://localhost:8000/oauth2/facturas-nube/google`.
+- Deja los *Authorised domains* como estén: son para la portada y la política de
+  privacidad, y no tienen nada que ver con esto.
+
+**2. Abre un túnel SSH** desde el equipo donde vayas a usar el navegador, apuntando al
+puerto en el que sirve FacturaScripts (aquí, el 80 del servidor):
+
+```bash
+ssh -L 8000:localhost:80 tu-servidor
+```
+
+**3. Cambia la url del sitio**: **Panel de control → general → avanzado → URL**, ponla
+en `http://localhost:8000` y **guarda**.
+
+**4. Comprueba que el cambio ha entrado.** Este es el paso que más veces se salta: entra
+en **Facturas en la nube** y mira el campo *URI de redirección autorizado*. Tiene que
+mostrar ya `http://localhost:8000/...`. Si sigue mostrando el dominio anterior, el
+guardado no ha cuajado y al pulsar Conectar tendrás un `redirect_uri_mismatch`.
+
+**5. Abre `http://localhost:8000` en el navegador** y vuelve a iniciar sesión: es otro
+host, así que la cookie de sesión anterior no viaja hasta aquí.
+
+**6. Pulsa Conectar con Google Drive** y autoriza el acceso.
+
+**7. Con la cuenta ya conectada, devuelve la URL del sitio a su valor real**
+(`https://tu-servidor.tured.ts.net:8080` o el que sea) y guarda. La conexión sigue
+funcionando: el token ya está guardado.
+
+**8. Comprueba con *Sincronizar ahora*.**
+
+Si más adelante necesitas reconectar la cuenta (porque cambies los permisos o
+desconectes), hay que repetir los pasos 2 a 7.
+
+#### Si aun así falla
+
+La URL de la propia página de error de Google lleva dentro la URI exacta que envió el
+plugin. Descodifícala y compárala con la registrada:
+
+```bash
+python3 -c "import sys,urllib.parse as u; print(u.parse_qs(u.urlparse(sys.argv[1]).query)['redirect_uri'][0])" 'URL_DE_LA_PAGINA_DE_ERROR'
+```
+
+Causas habituales, por orden de frecuencia:
+
+1. La url del sitio no llegó a guardarse (paso 4).
+2. Los cambios en el cliente de Google tardan en propagarse: de 5 minutos a unas horas.
+3. El Client ID configurado es de un cliente distinto de aquel donde registraste la URI.
+4. Diferencias literales: `https` en vez de `http`, `127.0.0.1` en vez de `localhost`,
+   el puerto ausente o una barra final de más.
 
 ## Configuración del plugin
 
