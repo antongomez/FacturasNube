@@ -23,6 +23,13 @@ use FacturaScripts\Plugins\FacturasNube\Model\CuentaNube;
  */
 class FacturasNube extends PanelController
 {
+    /**
+     * Facturas que sube cada petición del botón "sincronizar ahora".
+     * Es deliberadamente pequeño: el navegador encadena tandas hasta terminar,
+     * y así ninguna petición se acerca al límite de tiempo del servidor.
+     */
+    const AJAX_BATCH = 5;
+
     public function getPageData(): array
     {
         $data = parent::getPageData();
@@ -110,6 +117,9 @@ class FacturasNube extends PanelController
 
     protected function createViewsConfig(string $viewName = 'FacturasNubeConfig'): void
     {
+        // Assets/JS/FacturasNube.js lo carga solo el core, porque su nombre coincide
+        // con el del controlador. Registrarlo aquí además lo duplicaría, y con él
+        // el manejador del formulario de sincronización.
         $this->addHtmlView($viewName, 'Tab/FacturasNubeConfig', 'ArchivoNube', 'configuration', 'fa-solid fa-gears');
     }
 
@@ -148,6 +158,9 @@ class FacturasNube extends PanelController
 
             case 'save-config':
                 return $this->saveConfigAction();
+
+            case 'sync-batch':
+                return $this->syncBatchAction();
 
             case 'sync-now':
                 return $this->syncNowAction();
@@ -348,6 +361,37 @@ class FacturasNube extends PanelController
         ]);
 
         return true;
+    }
+
+    /**
+     * Sube una tanda pequeña y responde en json cuánto queda, para que el navegador
+     * pueda encadenar peticiones hasta vaciar la cola sin que ninguna se eternice.
+     */
+    protected function syncBatchAction(): bool
+    {
+        $this->setTemplate(false);
+
+        if (false === $this->permissions->allowUpdate || false === $this->validateFormToken()) {
+            $this->response->json(['ok' => false, 'message' => Tools::trans('not-allowed-modify')]);
+            return false;
+        }
+
+        if (false === Config::enabled()) {
+            $this->response->json(['ok' => false, 'message' => Tools::trans('facturasnube-disabled')]);
+            return false;
+        }
+
+        $result = Sincronizador::syncPending(self::AJAX_BATCH);
+
+        $this->response->json([
+            'ok' => true,
+            'processed' => $result['total'],
+            'uploaded' => $result['ok'],
+            'failed' => $result['error'],
+            'remaining' => Sincronizador::remainingCount(),
+        ]);
+
+        return false;
     }
 
     /** Comprueba la conexión mostrando el email de la cuenta y la carpeta raíz. */

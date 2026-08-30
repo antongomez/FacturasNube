@@ -185,7 +185,13 @@ Causas habituales, por orden de frecuencia:
 
 ## Acciones manuales
 
-- **Sincronizar ahora**: procesa la cola en el momento, sin esperar al cron.
+- **Sincronizar ahora**: procesa la cola en el momento, sin esperar al cron. El aviso de
+  *procesando* se mantiene hasta que no queda nada por subir, y va indicando cuántas
+  llevan y cuántas faltan. Por dentro encadena tandas pequeñas en lugar de mandarlo todo
+  en una petición: subir cientos de PDF tarda minutos y el servidor la cortaría a mitad
+  por `max_execution_time`. Si una tanda entera falla, se detiene y avisa en lugar de
+  agotar ahí los reintentos. Sin javascript el botón sigue funcionando, subiendo una
+  tanda por pulsación.
 - **Reintentar las fallidas**: devuelve a la cola las filas que agotaron los reintentos.
 - **Marcar facturas desde**: fuerza un repaso de las facturas emitidas a partir de una
   fecha. No hace falta para subir el histórico —de eso se encarga solo—, sirve para

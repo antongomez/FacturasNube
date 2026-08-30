@@ -332,6 +332,36 @@ final class SincronizadorTest extends TestCase
         $this->deleteInvoice($invoice);
     }
 
+    public function testRemainingCountAddsQueueAndSweep(): void
+    {
+        $invoice = $this->getRandomCustomerInvoice();
+        $this->assertTrue($invoice->save());
+        $this->assertTrue(Sincronizador::enqueue($invoice));
+
+        // el histórico ya repasado no suma, así que solo cuenta la cola
+        Config::setSweepCursor((int)$invoice->idfactura);
+        $queue = Sincronizador::pendingCount();
+        $this->assertGreaterThan(0, $queue, 'queue-not-counted');
+        $this->assertSame($queue, Sincronizador::remainingCount(), 'sweep-should-be-finished');
+
+        // una fila que agotó los reintentos ya no es trabajo pendiente
+        $row = $this->findRow($invoice);
+        $row->intentos = Config::maxRetries();
+        $row->estado = ArchivoNube::ESTADO_ERROR;
+        $this->assertTrue($row->save());
+        $this->assertSame($queue - 1, Sincronizador::pendingCount(), 'exhausted-row-still-counted');
+
+        // retroceder el cursor devuelve trabajo al repaso del histórico
+        Config::setSweepCursor((int)$invoice->idfactura - 1);
+        $this->assertGreaterThan(
+            Sincronizador::pendingCount(),
+            Sincronizador::remainingCount(),
+            'sweep-not-added-to-remaining'
+        );
+
+        $this->deleteInvoice($invoice);
+    }
+
     public function testPdfIsGenerated(): void
     {
         $invoice = $this->getRandomCustomerInvoice();

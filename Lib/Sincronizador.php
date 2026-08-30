@@ -189,6 +189,26 @@ class Sincronizador
         return $added;
     }
 
+    /** Filas de la cola que todavía se pueden procesar. */
+    public static function pendingCount(string $servicio = GoogleDrive::SERVICE): int
+    {
+        return ArchivoNube::count([
+            Where::eq('servicio', $servicio),
+            Where::in('estado', [
+                ArchivoNube::ESTADO_PENDING,
+                ArchivoNube::ESTADO_ERROR,
+                ArchivoNube::ESTADO_TO_DELETE,
+            ]),
+            Where::lt('intentos', Config::maxRetries()),
+        ]);
+    }
+
+    /** Trabajo que queda por hacer: cola pendiente más histórico sin repasar. */
+    public static function remainingCount(string $servicio = GoogleDrive::SERVICE): int
+    {
+        return self::pendingCount($servicio) + self::pendingSweepCount();
+    }
+
     /** Facturas que aún no ha mirado el repaso del histórico. */
     public static function pendingSweepCount(): int
     {
