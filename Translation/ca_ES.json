@@ -32,6 +32,7 @@
     "facturasnube-missing-credentials": "Abans de connectar cal desar el Client ID i el Client secret.",
     "facturasnube-no-refresh-token": "Google no ha retornat un token de refresc. Revoca l'accés de l'aplicació al teu compte de Google i torna a connectar.",
     "facturasnube-not-connected": "Sense connectar",
+    "facturasnube-nothing-to-sync": "No hi havia res pendent de pujar. Per tornar a pujar factures ja sincronitzades, marca la casella de tornar-les a pujar.",
     "facturasnube-on-delete": "En eliminar una factura",
     "facturasnube-on-delete-delete": "Esborrar el fitxer definitivament",
     "facturasnube-on-delete-keep": "No tocar el fitxer",

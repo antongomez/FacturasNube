@@ -19,8 +19,18 @@
      * el usuario veía un "petición duplicada" que no tenía nada que ver con lo que
      * acababa de hacer.
      */
-    function reloadAsGet() {
-        window.location.assign(window.location.pathname + window.location.search);
+    function reloadAsGet(done, failed) {
+        const url = new URL(window.location.href);
+
+        // el endpoint de tanda responde en json y no deja rastro en el registro,
+        // así que el resultado viaja en la url para que la pantalla lo cuente al
+        // recargarse. Sin esto, no tener nada pendiente era indistinguible de un fallo:
+        // la página se recargaba en silencio y parecía que no había hecho nada.
+        if (typeof done === 'number') {
+            url.searchParams.set('fsnube_sync', done + '-' + failed);
+        }
+
+        window.location.assign(url.pathname + url.search);
     }
 
     function replaceSpinner(message, title) {
@@ -80,6 +90,7 @@
                 return;
             }
 
+
             done += payload.uploaded;
             failed += payload.failed;
 
@@ -93,10 +104,7 @@
             // de cada factura, que es trabajo que el cron puede repetir más tarde
             if (payload.uploaded === 0 && payload.failed > 0) {
                 animateSpinner('remove');
-                setToast(format(progressText, done, failed, payload.remaining), 'danger', '', 0);
-                window.setTimeout(function () {
-                    reloadAsGet();
-                }, 4000);
+                reloadAsGet(done, failed);
                 return;
             }
 
@@ -104,7 +112,7 @@
         }
 
         animateSpinner('remove');
-        reloadAsGet();
+        reloadAsGet(done, failed);
     }
 
     document.addEventListener('DOMContentLoaded', function () {

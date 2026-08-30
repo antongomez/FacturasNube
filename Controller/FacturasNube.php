@@ -91,12 +91,45 @@ class FacturasNube extends PanelController
     }
 
     /**
+     * Cuenta cómo ha ido la sincronización lanzada desde el navegador.
+     *
+     * El endpoint de tanda responde en json y no deja rastro en el registro, así que
+     * el resultado vuelve en la url. Sin esto, no tener nada pendiente se veía igual
+     * que un fallo: la pantalla se recargaba en silencio y parecía no haber hecho nada.
+     */
+    protected function showSyncResult(): void
+    {
+        $value = (string)$this->request->query('fsnube_sync', '');
+        if (false === (bool)preg_match('/^(\d+)-(\d+)$/', $value, $matches)) {
+            return;
+        }
+
+        $ok = (int)$matches[1];
+        $error = (int)$matches[2];
+
+        if ($ok === 0 && $error === 0) {
+            Tools::log()->notice('facturasnube-nothing-to-sync');
+            return;
+        }
+
+        $context = ['%ok%' => $ok, '%error%' => $error];
+        if ($error > 0) {
+            Tools::log()->warning('facturasnube-sync-result', $context);
+            return;
+        }
+
+        Tools::log()->notice('facturasnube-sync-result', $context);
+    }
+
+    /**
      * Muestra el resultado del flujo de autorización. El callback de Google no puede
      * dejar el mensaje en la sesión (es de un solo request), así que vuelve aquí
      * con un parámetro en la url.
      */
     protected function showCallbackMessage(): void
     {
+        $this->showSyncResult();
+
         switch ($this->request->query('fsnube', '')) {
             case 'auth-error':
                 Tools::log()->error('facturasnube-auth-error');

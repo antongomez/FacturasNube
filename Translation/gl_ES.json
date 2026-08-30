@@ -32,6 +32,7 @@
     "facturasnube-missing-credentials": "Antes de conectar hai que gardar o Client ID e o Client secret.",
     "facturasnube-no-refresh-token": "Google non devolveu un token de actualización. Revoga o acceso da aplicación na túa conta de Google e volve conectar.",
     "facturasnube-not-connected": "Sen conectar",
+    "facturasnube-nothing-to-sync": "Non había nada pendente de subir. Para volver subir facturas xa sincronizadas, marca a opción de volver subilas.",
     "facturasnube-on-delete": "Ao eliminar unha factura",
     "facturasnube-on-delete-delete": "Borrar o ficheiro definitivamente",
     "facturasnube-on-delete-keep": "Non tocar o ficheiro",
