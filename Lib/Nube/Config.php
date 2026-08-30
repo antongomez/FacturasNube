@@ -118,7 +118,13 @@ class Config
      */
     public static function redirectUri(): string
     {
-        return rtrim(Tools::siteUrl(), '/') . '/oauth2/facturas-nube/google';
+        // Google compara la URI carácter a carácter. Un espacio o un salto de línea
+        // colados al pegar site_url son invisibles en pantalla y dan redirect_uri_mismatch,
+        // así que se limpian antes de componerla.
+        $base = trim(Tools::siteUrl());
+        $base = trim($base, " \t\n\r\0\x0B/");
+
+        return $base . '/oauth2/facturas-nube/google';
     }
 
     public static function set(string $key, $value): void

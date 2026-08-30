@@ -15,8 +15,18 @@ final class ConfigTest extends TestCase
 {
     use LogErrorsTrait;
 
+    /** @var string|null */
+    private $siteUrlBackup;
+
+    protected function setUp(): void
+    {
+        $this->siteUrlBackup = Tools::settings('default', 'site_url');
+    }
+
     protected function tearDown(): void
     {
+        Tools::settingsSet('default', 'site_url', $this->siteUrlBackup);
+
         foreach (['carpeta_nombre', 'al_borrar', 'max_intentos', 'tam_lote', 'plantilla_nombre', 'scope', 'carpeta_raiz'] as $key) {
             Tools::settingsSet(Config::GROUP, $key, null);
         }
@@ -85,6 +95,25 @@ final class ConfigTest extends TestCase
 
         Tools::settingsSet(Config::GROUP, 'tam_lote', 0);
         $this->assertSame(25, Config::batchSize(), 'zero-batch-accepted');
+    }
+
+    public function testRedirectUriIgnoresStraySpacesInSiteUrl(): void
+    {
+        $clean = Config::redirectUri();
+
+        // un espacio pegado por accidente en site_url es invisible en pantalla,
+        // pero Google compara la URI carácter a carácter y la rechazaría
+        foreach ([' ', "\n", "\t", '/', " \n"] as $noise) {
+            Tools::settingsSet('default', 'site_url', $noise . 'https://ejemplo.test' . $noise);
+            $this->assertSame(
+                'https://ejemplo.test/oauth2/facturas-nube/google',
+                Config::redirectUri(),
+                'stray-whitespace-reaches-the-redirect-uri'
+            );
+        }
+
+        Tools::settingsSet('default', 'site_url', null);
+        $this->assertNotEmpty($clean, 'empty-redirect-uri');
     }
 
     public function testRedirectUriHasNoQueryString(): void
