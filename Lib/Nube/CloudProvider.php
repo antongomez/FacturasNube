@@ -53,7 +53,8 @@ interface CloudProvider
 
     /**
      * Lleva el archivo a otra carpeta conservando su id, para que no se rompan los
-     * enlaces ya compartidos. Necesario cuando cambia el esquema de carpetas.
+     * enlaces ya compartidos. Devuelve true si hubo que moverlo y false si ya
+     * estaba en la carpeta indicada.
      *
      * @throws CloudException
      */

@@ -321,9 +321,11 @@ class Sincronizador
 
         $exists = !empty($item->file_id) && $provider->fileExists($item->file_id);
 
-        // si ha cambiado el esquema de carpetas, el archivo se lleva a la nueva
-        // conservando su id, para no romper los enlaces ya compartidos
-        if ($exists && $item->carpeta !== implode('/', $segments)) {
+        // el archivo puede haber quedado en otra carpeta: cambio de carpeta raíz, de
+        // esquema de subcarpetas, o estructura recreada tras borrarla en Drive. Se lleva
+        // al destino actual conservando su id, para no romper los enlaces ya compartidos.
+        // Si ya cuelga de la carpeta correcta, moveFile no toca nada.
+        if ($exists) {
             $provider->moveFile($item->file_id, $folderId);
         }
 
@@ -360,6 +362,9 @@ class Sincronizador
             'doc' => $factura->toArray(),
             'lines' => [],
             'name' => $fileName,
+            // la carpeta raíz también decide dónde acaba el archivo: si cambia,
+            // la huella tiene que cambiar para que el archivo se recoloque
+            'root' => Config::rootFolderId() !== '' ? Config::rootFolderId() : Config::rootFolderName(),
             'folder' => implode('/', $segments),
         ];
 

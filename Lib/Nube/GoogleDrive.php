@@ -400,7 +400,8 @@ class GoogleDrive implements CloudProvider
 
     /**
      * Lleva el archivo a otra carpeta conservando su id, de forma que los enlaces
-     * que ya se hubieran compartido siguen siendo válidos.
+     * que ya se hubieran compartido siguen siendo válidos. Devuelve true si hubo
+     * que moverlo y false si ya colgaba de la carpeta indicada.
      *
      * @throws CloudException
      */
@@ -413,7 +414,7 @@ class GoogleDrive implements CloudProvider
 
         $current = $data['parents'] ?? [];
         if ($current === [$folderId]) {
-            return true;
+            return false;
         }
 
         // Drive no admite cambiar "parents" en un PATCH normal: hay que usar

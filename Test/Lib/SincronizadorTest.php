@@ -31,8 +31,8 @@ final class SincronizadorTest extends TestCase
      * @var string[]
      */
     const TOUCHED_SETTINGS = [
-        'activo', 'al_borrar', 'cursor_historico', 'fecha_inicio',
-        'historico', 'plantilla_nombre', 'subcarpetas', 'tam_lote',
+        'activo', 'al_borrar', 'carpeta_nombre', 'carpeta_raiz', 'cursor_historico',
+        'fecha_inicio', 'historico', 'plantilla_nombre', 'subcarpetas', 'tam_lote',
     ];
 
     /** @var array */
@@ -50,6 +50,8 @@ final class SincronizadorTest extends TestCase
         Tools::settingsSet(Config::GROUP, 'subcarpetas', true);
         Tools::settingsSet(Config::GROUP, 'plantilla_nombre', '{codigo}');
         Tools::settingsSet(Config::GROUP, 'al_borrar', Config::ON_DELETE_TRASH);
+        Tools::settingsSet(Config::GROUP, 'carpeta_raiz', '');
+        Tools::settingsSet(Config::GROUP, 'carpeta_nombre', 'carpeta-de-prueba');
     }
 
     protected function tearDown(): void
@@ -127,6 +129,15 @@ final class SincronizadorTest extends TestCase
         // cambiar el nombre o la carpeta destino cambia la huella
         $this->assertNotSame($hash, Sincronizador::documentHash($invoice, 'otro.pdf', $segments), 'hash-ignores-name');
         $this->assertNotSame($hash, Sincronizador::documentHash($invoice, $name, ['x']), 'hash-ignores-folder');
+
+        // la carpeta raíz también decide dónde acaba el archivo: cambiarla (por nombre
+        // o por id) tiene que cambiar la huella, o el archivo no se recolocaría nunca
+        Tools::settingsSet(Config::GROUP, 'carpeta_nombre', 'otra-carpeta-de-prueba');
+        $withRootName = Sincronizador::documentHash($invoice, $name, $segments);
+        $this->assertNotSame($hash, $withRootName, 'hash-ignores-root-name');
+
+        Tools::settingsSet(Config::GROUP, 'carpeta_raiz', 'id-de-prueba');
+        $this->assertNotSame($withRootName, Sincronizador::documentHash($invoice, $name, $segments), 'hash-ignores-root-id');
 
         // modificar el documento también
         $invoice->observaciones = 'texto de prueba';
