@@ -42,13 +42,50 @@ la misma factura nunca coinciden byte a byte.
 ## Requisitos
 
 - FacturaScripts 2026 o superior.
-- **El cron de FacturaScripts configurado en el servidor.** Sin él no se sube nada de
-  forma automática; solo funcionaría el botón *Sincronizar ahora*.
+- **El cron de FacturaScripts configurado en el servidor** (ver
+  [Configurar el cron](#configurar-el-cron)). Sin él no se sube nada de forma
+  automática; solo funcionaría el botón *Sincronizar ahora*.
 - `site_url` bien configurada en la empresa: de ahí sale el URI de redirección de OAuth.
 - Un dominio público para la conexión inicial con Google. Si tu servidor está en
   Tailscale, en una VPN o en la red local, mira
   [Servidor sin dominio público](#servidor-sin-dominio-público-tailscale-vpn-red-local):
   se resuelve conectando una única vez a través de `localhost`.
+
+## Configurar el cron
+
+El cron de FacturaScripts es un comando que hay que programar en el servidor; el plugin
+registra en él su trabajo `sincronizar-facturas-nube`. Pruébalo primero a mano:
+
+```bash
+cd /ruta/a/facturascripts
+php index.php -cron
+```
+
+Si FacturaScripts corre en Docker (imagen oficial), el comando se lanza dentro del
+contenedor y **con el usuario del servidor web**, para no dejar archivos de root en
+`MyFiles`:
+
+```bash
+docker exec -u www-data NOMBRE_DEL_CONTENEDOR php /var/www/html/index.php -cron
+```
+
+Cuando funcione, prográmalo cada minuto en el crontab (`crontab -e`):
+
+```cron
+* * * * * docker exec -u www-data NOMBRE_DEL_CONTENEDOR php /var/www/html/index.php -cron >/dev/null 2>>$HOME/fs-cron.err
+```
+
+(Sin Docker, la línea es `cd /ruta/a/facturascripts && php index.php -cron` con las
+mismas redirecciones.) La salida normal se descarta y solo queda rastro en
+`~/fs-cron.err` si algo falla de verdad: docker parado, PHP roto. En régimen normal ese
+archivo se queda en cero bytes.
+
+Cada minuto no es tan agresivo como parece: el crontab solo *invoca* a FacturaScripts, y
+cada trabajo interno corre cuando le toca según su propio período. El del plugin está a
+1 minuto, así que una factura nueva o modificada aparece en Drive en 1-2 minutos; una
+pasada sin trabajo tarda décimas de segundo. Para verificar que está vivo: `crontab -l`
+muestra la línea, `journalctl -u cron` muestra los disparos, y la página de **Cron** del
+panel de administración muestra la última ejecución de cada trabajo.
 
 ## Configuración en Google Cloud Console
 
