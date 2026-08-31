@@ -26,7 +26,16 @@ class Cron extends CronClass
         $this->job('sincronizar-facturas-nube')
             ->every('1 minute')
             ->run(function () {
+                // mismo convenio que el cron del core: cada echo EMPIEZA con sus saltos
+                // de línea y no termina con ninguno, porque la cabecera del plugin se
+                // imprime sin salto final y el siguiente bloque ya trae el suyo delante
+                echo PHP_EOL . PHP_EOL . '* JOB: sincronizar-facturas-nube ...';
+
                 $result = Sincronizador::syncPending();
+
+                echo PHP_EOL . '- Subidas: ' . $result['ok'] . '. Con error: ' . $result['error']
+                    . '. Pendientes: ' . Sincronizador::remainingCount() . '.';
+
                 if ($result['total'] > 0) {
                     Tools::log('facturasnube')->notice('facturasnube-cron-result', [
                         '%ok%' => $result['ok'],
