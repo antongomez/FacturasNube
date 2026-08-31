@@ -6,7 +6,9 @@
 
 namespace FacturaScripts\Test\Plugins\FacturasNube\Lib\Nube;
 
+use FacturaScripts\Core\Cache;
 use FacturaScripts\Core\Tools;
+use FacturaScripts\Plugins\FacturasNube\Lib\Nube\CloudException;
 use FacturaScripts\Plugins\FacturasNube\Lib\Nube\CloudProvider;
 use FacturaScripts\Plugins\FacturasNube\Lib\Nube\Config;
 use FacturaScripts\Plugins\FacturasNube\Lib\Nube\GoogleDrive;
@@ -21,14 +23,19 @@ final class GoogleDriveTest extends TestCase
     /** @var mixed */
     private $clientIdBackup;
 
+    /** @var mixed */
+    private $rootFolderBackup;
+
     protected function setUp(): void
     {
         $this->clientIdBackup = Tools::settings(Config::GROUP, 'client_id');
+        $this->rootFolderBackup = Tools::settings(Config::GROUP, 'carpeta_raiz');
     }
 
     protected function tearDown(): void
     {
         Tools::settingsSet(Config::GROUP, 'client_id', $this->clientIdBackup);
+        Tools::settingsSet(Config::GROUP, 'carpeta_raiz', $this->rootFolderBackup);
         $this->logErrors();
     }
 
@@ -102,5 +109,90 @@ final class GoogleDriveTest extends TestCase
 
         $account->expires = Tools::dateTime('+1 hour');
         $this->assertFalse($account->tokenExpired(), 'valid-token-marked-as-expired');
+    }
+
+    public function testCachedFolderInTrashIsForgottenAndRecreated(): void
+    {
+        // en Drive "borrar" es enviar a la papelera, y una carpeta en la papelera
+        // sigue aceptando subidas sin dar error: todo lo que entra nace invisible.
+        // Un id cacheado no se puede devolver sin comprobar que sigue vivo.
+        $cacheKey = 'facturasnube-google-folder-' . md5('padre/Facturas');
+        Cache::set($cacheKey, 'carpeta-en-papelera');
+
+        $drive = $this->fakeDrive(['carpeta-en-papelera' => false]);
+        $folderId = $drive->findOrCreate('Facturas', 'padre');
+
+        $this->assertSame('carpeta-nueva', $folderId, 'trashed-folder-id-still-used');
+        $this->assertSame(['Facturas'], $drive->created, 'folder-not-recreated');
+        $this->assertSame('carpeta-nueva', Cache::get($cacheKey), 'cache-not-refreshed');
+
+        Cache::delete($cacheKey);
+    }
+
+    public function testCachedFolderIsReusedWhileItExists(): void
+    {
+        $cacheKey = 'facturasnube-google-folder-' . md5('padre/Facturas');
+        Cache::set($cacheKey, 'carpeta-viva');
+
+        $drive = $this->fakeDrive(['carpeta-viva' => true]);
+        $this->assertSame('carpeta-viva', $drive->findOrCreate('Facturas', 'padre'), 'cached-folder-not-reused');
+        $this->assertSame([], $drive->created, 'folder-recreated-while-alive');
+
+        Cache::delete($cacheKey);
+    }
+
+    public function testConfiguredRootFolderInTrashStopsTheUpload(): void
+    {
+        // el id lo escribió el usuario: si apunta a la papelera hay que avisar,
+        // no trabajar contra una carpeta que nadie va a ver
+        Tools::settingsSet(Config::GROUP, 'carpeta_raiz', 'id-en-papelera');
+
+        $drive = $this->fakeDrive([]);
+        $this->expectException(CloudException::class);
+        $drive->rootFolderId();
+    }
+
+    /**
+     * Un GoogleDrive sin red: las carpetas "vivas" se declaran en el mapa,
+     * la búsqueda por nombre nunca encuentra nada y crear siempre funciona.
+     *
+     * @param array<string,bool> $alive
+     */
+    private function fakeDrive(array $alive)
+    {
+        return new class($alive) extends GoogleDrive {
+            /** @var array<string,bool> */
+            public $alive;
+
+            /** @var string[] */
+            public $created = [];
+
+            public function __construct(array $alive)
+            {
+                parent::__construct(new CuentaNube());
+                $this->alive = $alive;
+            }
+
+            public function fileExists(string $fileId): bool
+            {
+                return !empty($this->alive[$fileId]);
+            }
+
+            public function findOrCreate(string $name, string $parentId): string
+            {
+                return $this->findOrCreateFolder($name, $parentId, $name);
+            }
+
+            protected function apiGet(string $path, array $query = []): array
+            {
+                return ['files' => []];
+            }
+
+            protected function apiPostJson(string $path, array $body, array $query = []): array
+            {
+                $this->created[] = (string)($body['name'] ?? '');
+                return ['id' => 'carpeta-nueva'];
+            }
+        };
     }
 }

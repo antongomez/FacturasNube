@@ -36,6 +36,9 @@ class GoogleDrive implements CloudProvider
     /** @var CuentaNube|null */
     protected $cuenta;
 
+    /** Carpetas ya comprobadas en este proceso, para no repetir la llamada. @var array<string,bool> */
+    protected $aliveFolders = [];
+
     public function __construct(?CuentaNube $cuenta = null)
     {
         $this->cuenta = $cuenta ?? CuentaNube::forService(self::SERVICE);
@@ -232,6 +235,12 @@ class GoogleDrive implements CloudProvider
     {
         $configured = Config::rootFolderId();
         if ($configured !== '') {
+            // un id que apunta a la papelera aceptaría subidas sin quejarse; mejor
+            // avisar de que la configuración ya no vale que hacer subidas invisibles
+            if (false === $this->folderAlive($configured)) {
+                throw new CloudException(Tools::trans('facturasnube-root-folder-missing', ['%id%' => $configured]));
+            }
+
             return $configured;
         }
 
@@ -249,7 +258,13 @@ class GoogleDrive implements CloudProvider
         $cacheKey = 'facturasnube-google-folder-' . md5($parentId . '/' . $name);
         $cached = Cache::get($cacheKey);
         if (is_string($cached) && $cached !== '') {
-            return $cached;
+            if ($this->folderAlive($cached)) {
+                return $cached;
+            }
+
+            // la carpeta cacheada ya no está (o está en la papelera): se olvida
+            // y se busca o crea de nuevo como si fuera la primera vez
+            Cache::delete($cacheKey);
         }
 
         $query = "mimeType = '" . self::FOLDER_MIME . "'"
@@ -282,7 +297,30 @@ class GoogleDrive implements CloudProvider
         }
 
         Cache::set($cacheKey, $folderId);
+        $this->aliveFolders[$folderId] = true;
         return $folderId;
+    }
+
+    /**
+     * True si la carpeta sigue existiendo fuera de la papelera. En Drive "borrar" es
+     * enviar a la papelera, y una carpeta en la papelera sigue aceptando archivos sin
+     * dar ningún error: todo lo que se sube a ella nace invisible. Por eso un id
+     * guardado no se puede dar por bueno sin comprobarlo, una vez por proceso.
+     *
+     * @throws CloudException
+     */
+    protected function folderAlive(string $folderId): bool
+    {
+        if (isset($this->aliveFolders[$folderId])) {
+            return true;
+        }
+
+        if ($this->fileExists($folderId)) {
+            $this->aliveFolders[$folderId] = true;
+            return true;
+        }
+
+        return false;
     }
 
     /** Olvida los ids de carpeta cacheados. Necesario al cambiar de cuenta o de carpeta raíz. */

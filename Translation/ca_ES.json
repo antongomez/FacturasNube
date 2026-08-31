@@ -46,6 +46,7 @@
     "facturasnube-retry-errors-help": "Retorna a la cua les que han exhaurit els reintents.",
     "facturasnube-root-folder-id": "Id de la carpeta de destí",
     "facturasnube-root-folder-id-help": "Id de la carpeta de Drive on desar les factures. Deixa'l buit perquè el plugin creï la seva pròpia carpeta.",
+    "facturasnube-root-folder-missing": "La carpeta arrel configurada (id %id%) no existeix o és a la paperera de Drive. Corregeix l'id o buida'l perquè el connector creï la seva pròpia carpeta.",
     "facturasnube-root-folder-name": "Nom de la carpeta a crear",
     "facturasnube-scope": "Permisos que es demanen a Google",
     "facturasnube-scope-changed": "Has canviat els permisos, però el compte connectat continua amb els anteriors. Desconnecta i torna a connectar per aplicar-los.",

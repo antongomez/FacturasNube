@@ -46,6 +46,7 @@
     "facturasnube-retry-errors-help": "Devuelve a la cola las que agotaron los reintentos.",
     "facturasnube-root-folder-id": "Id de la carpeta destino",
     "facturasnube-root-folder-id-help": "Id de la carpeta de Drive donde guardar las facturas. Déjalo vacío para que el plugin cree su propia carpeta.",
+    "facturasnube-root-folder-missing": "La carpeta raíz configurada (id %id%) no existe o está en la papelera de Drive. Corrige el id o vacíalo para que el plugin cree su propia carpeta.",
     "facturasnube-root-folder-name": "Nombre de la carpeta a crear",
     "facturasnube-scope": "Permisos que se piden a Google",
     "facturasnube-scope-changed": "Has cambiado los permisos, pero la cuenta conectada sigue con los anteriores. Desconecta y vuelve a conectar para aplicarlos.",

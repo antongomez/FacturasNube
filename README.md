@@ -214,6 +214,28 @@ uno con ese nombre en la carpeta de destino y lo reutiliza. Eso cubre también e
 reinstalar el plugin con la tabla vacía. Para rehacer una subida, la vía limpia es la
 casilla de volver a subirlas.
 
+### Si borras la carpeta en Drive
+
+En Drive "borrar" es enviar a la papelera, y para la API una carpeta en la papelera
+sigue existiendo y **sigue aceptando subidas sin dar ningún error**: todo lo que entre
+en ella nace invisible. Por eso el plugin no se fía de los ids de carpeta que tiene
+cacheados: antes de usarlos comprueba (una vez por proceso) que la carpeta sigue viva, y
+si está en la papelera la olvida y crea una nueva. Los archivos que estaban dentro
+también quedaron en la papelera, así que la siguiente subida crea archivos nuevos con
+ids nuevos; los antiguos se quedan en la papelera hasta que se vacíe.
+
+Si la carpeta borrada es una configurada a mano por su id (*Id de la carpeta de
+destino*), el plugin no puede decidir por ti: la sincronización falla con un aviso que
+pide corregir el id o vaciarlo.
+
+### Si cambias el nombre de la carpeta o la plantilla del nombre
+
+La huella de cada factura incluye el nombre de archivo y la ruta de carpetas, así que
+tras cambiar cualquiera de los dos basta **Revisar y subir** (sin marcar la casilla de
+forzar): cada archivo se renombra y se lleva a la carpeta nueva **conservando su id**,
+de modo que los enlaces ya compartidos siguen funcionando. La carpeta antigua se queda
+vacía en Drive; bórrala si quieres, ya no se usa.
+
 ## Estados
 
 | Estado | Significado |

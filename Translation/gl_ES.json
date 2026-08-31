@@ -46,6 +46,7 @@
     "facturasnube-retry-errors-help": "Devolve á cola as que esgotaron os reintentos.",
     "facturasnube-root-folder-id": "Id do cartafol de destino",
     "facturasnube-root-folder-id-help": "Id do cartafol de Drive onde gardar as facturas. Déixao baleiro para que o plugin cree o seu propio cartafol.",
+    "facturasnube-root-folder-missing": "O cartafol raíz configurado (id %id%) non existe ou está na papeleira do Drive. Corrixe o id ou baléirao para que o plugin cree o seu propio cartafol.",
     "facturasnube-root-folder-name": "Nome do cartafol a crear",
     "facturasnube-scope": "Permisos que se piden a Google",
     "facturasnube-scope-changed": "Cambiaches os permisos, pero a conta conectada segue cos anteriores. Desconecta e volve conectar para aplicalos.",
